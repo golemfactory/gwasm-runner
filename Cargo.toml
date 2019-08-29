@@ -1,8 +1,9 @@
 [package]
 name = "gwasm-runner"
 version = "0.1.0"
-authors = ["Piotr Chromiec <tworec@golem.network>"]
+authors = ["Golem Factory <contact@golem.network>"]
 edition = "2018"
+description = "Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
@@ -11,3 +12,4 @@ members = [
 ]
 
 [dependencies]
+structopt={ version="0.2", features = ["wrap_help", "suggestions", "color"] }
