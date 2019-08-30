@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::*;
 
-
 #[derive(Debug, Clone)]
 enum Backend {
     Local,
@@ -11,30 +10,35 @@ enum Backend {
 }
 
 impl FromStr for Backend {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<Backend, ()> {
+    fn from_str(s: &str) -> Result<Backend, String> {
         match s {
+            "L" => Ok(Backend::Local),
             "Local" => Ok(Backend::Local),
-            "GolemUnlimited" => Ok(Backend::GolemUnlimited),
             "GU" => Ok(Backend::GolemUnlimited),
-            "Brass" => Ok(Backend::BrassGolem),
+            "Unlimited" => Ok(Backend::GolemUnlimited),
+            "GolemUnlimited" => Ok(Backend::GolemUnlimited),
             "Golem" => Ok(Backend::BrassGolem),
-            _ => Err(()),
+            "Brass" => Ok(Backend::BrassGolem),
+            "BrassGolem" => Ok(Backend::BrassGolem),
+            "GolemBrass" => Ok(Backend::BrassGolem),
+            x => Err(format!("{} is not a valid Backend", x)),
         }
     }
 }
 
-#[derive(Debug, StructOpt, Clone)]
+#[derive(StructOpt, Debug, Clone)]
+#[structopt(raw(setting = "structopt::clap::AppSettings::TrailingVarArg"))]
 struct Opt {
     /// Backend type to use
-    // #[structopt(long, short)]
-    // backend: Backend,
-    /// Wasm binary file to run
+    #[structopt(long, short, default_value = "Local")]
+    backend: Backend,
+    /// Wasm App binary file to run
     #[structopt(long, short, parse(from_os_str))]
     wasm_app: PathBuf,
-    /// Wasm app arguments
-    wasm_args: String,
+    /// All other args that will be passed to the Wasm App
+    wasm_app_args: Vec<String>,
 }
 
 fn main() {

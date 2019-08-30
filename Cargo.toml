@@ -3,7 +3,7 @@ name = "gwasm-runner"
 version = "0.1.0"
 authors = ["Golem Factory <contact@golem.network>"]
 edition = "2018"
-description = "Command line tool that enables running gWasm compatible apps"
+description = "Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
