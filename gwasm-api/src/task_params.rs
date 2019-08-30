@@ -2,6 +2,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 
+pub type TaskResult<In, Out> = Vec<(In, Out)>;
+
 
 #[derive(Clone, Copy, Debug)]
 pub enum InputDesc {
@@ -82,7 +84,6 @@ mod test {
     use crate::{input_desc_from_fn, Blob, TaskInput};
 
     type Args = ();
-    type TaskResult<In, Out> = Vec<(In, Out)>;
 
     fn produce(_: Args) -> Vec<(u64, Blob)> {
         vec![(10, Blob::default()), (11, Blob::default())]

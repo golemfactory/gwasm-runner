@@ -6,7 +6,7 @@ use crate::task_params::{TaskInputElem, InputDesc};
 
 #[derive(Default)]
 pub struct Blob {
-    path: Option<PathBuf>,
+    pub path: Option<PathBuf>,
 }
 
 
@@ -18,7 +18,7 @@ impl TaskInputElem for Blob {
 
     fn pack_task(&self) -> serde_json::Value {
         serde_json::json! {
-            {"path": "/tmp/xxxx"}
+            {"path": self.path}
         }
     }
 }
