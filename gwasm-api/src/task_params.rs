@@ -11,7 +11,7 @@ pub enum InputDesc {
     Blob,
 }
 
-trait TaskInput {
+pub trait TaskInput {
     fn to_input_desc() -> Vec<InputDesc>;
 
     fn pack_task(&self) -> serde_json::Value;
@@ -75,7 +75,7 @@ impl<T1: TaskInputElem, T2: TaskInputElem, T3: TaskInputElem> TaskInput for (T1,
     }
 }
 
-fn input_desc_from_fn<T: TaskInput, F: FnOnce(()) -> Vec<T>>(_: F) -> Vec<InputDesc> {
+pub fn input_desc_from_fn<T: TaskInput, F: FnOnce(()) -> Vec<T>>(_: F) -> Vec<InputDesc> {
     T::to_input_desc()
 }
 
