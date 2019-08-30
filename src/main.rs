@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::*;
 
+
 #[derive(Debug, Clone)]
 enum Backend {
     Local,
@@ -27,8 +28,8 @@ impl FromStr for Backend {
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
     /// Backend type to use
-    #[structopt(long, short)]
-    backend: Backend,
+    // #[structopt(long, short)]
+    // backend: Backend,
     /// Wasm binary file to run
     #[structopt(long, short, parse(from_os_str))]
     wasm_app: PathBuf,
