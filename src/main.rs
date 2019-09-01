@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use failure::ResultExt;
 use structopt::*;
+use sp_wasm_engine::prelude::*;
 
 #[derive(Debug, Clone)]
 enum Backend {
@@ -49,14 +50,14 @@ pub fn run_wasm_app(
     app: PathBuf,
     args: Vec<String>,
 ) -> failure::Fallible<()> {
-    let mut sandbox = sp_wasm_engine::sandbox::Sandbox::new()?.set_exec_args(args)?;
+    let mut sandbox = Sandbox::new()?.set_exec_args(args)?;
 
     sandbox.init()?;
     for volume in volumes {
         let mut it = volume.split(":").fuse();
         match (it.next(), it.next(), it.next()) {
             (Some(src), Some(dst), None) => sandbox
-                .mount(src, dst)
+                .mount(src, dst, NodeMode::Rw)
                 .context(format!("on bind mount: {}:{}", src, dst))?,
             _ => return Err(failure::err_msg(format!("invalid volume: {}", volume))),
         }
