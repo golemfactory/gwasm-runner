@@ -12,4 +12,7 @@ members = [
 ]
 
 [dependencies]
-structopt={ version="0.2", features = ["wrap_help", "suggestions", "color"] }
+env_logger = "0.6"
+failure="0.1"
+sp-wasm-engine = { git = "https://github.com/golemfactory/sp-wasm", branch="feature/cmd-line" }
+structopt = { version="0.2", features = ["wrap_help", "suggestions", "color"] }
