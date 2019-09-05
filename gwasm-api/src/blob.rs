@@ -1,10 +1,10 @@
 use std::path::{PathBuf, Path};
+use failure::{Error, Fail};
 
 use crate::task_params::{TaskInputElem, InputDesc};
 
 
 
-#[derive(Default)]
 pub struct Blob {
     pub path: Option<PathBuf>,
 }
@@ -20,6 +20,10 @@ impl TaskInputElem for Blob {
         serde_json::json! {
             {"path": self.path}
         }
+    }
+
+    fn from_json(json: serde_json::Value) -> Result<Self, Error> {
+        Ok(Blob::new(""))
     }
 }
 

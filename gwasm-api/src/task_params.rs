@@ -1,6 +1,8 @@
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use failure::{Error, Fail};
+
 
 pub type TaskResult<In, Out> = Vec<(In, Out)>;
 
@@ -11,16 +13,18 @@ pub enum InputDesc {
     Blob,
 }
 
-pub trait TaskInput {
+pub trait TaskInput : Sized {
     fn to_input_desc() -> Vec<InputDesc>;
 
     fn pack_task(&self) -> serde_json::Value;
+    fn from_json(json: serde_json::Value) -> Result<Self, Error>;
 }
 
-pub trait TaskInputElem {
+pub trait TaskInputElem : Sized {
     fn to_input_desc() -> InputDesc;
 
     fn pack_task(&self) -> serde_json::Value;
+    fn from_json(json: serde_json::Value) -> Result<Self, Error>;
 }
 
 impl<S: Serialize + DeserializeOwned> TaskInputElem for S {
@@ -30,8 +34,12 @@ impl<S: Serialize + DeserializeOwned> TaskInputElem for S {
 
     fn pack_task(&self) -> serde_json::Value {
         serde_json::json! {
-            {"item": self}
+            { "meta": self }
         }
+    }
+
+    fn from_json(json: serde_json::Value) -> Result<Self, Error> {
+        Ok(serde_json::from_value(json)?)
     }
 }
 
@@ -45,6 +53,10 @@ impl<T: TaskInputElem> TaskInput for (T,) {
             [self.0.pack_task()]
         }
     }
+
+    fn from_json(json: serde_json::Value) -> Result<Self, Error> {
+        Ok((T::from_json(json[0].clone())?,))
+    }
 }
 
 impl<T1: TaskInputElem, T2: TaskInputElem> TaskInput for (T1, T2) {
@@ -56,6 +68,11 @@ impl<T1: TaskInputElem, T2: TaskInputElem> TaskInput for (T1, T2) {
         serde_json::json! {
             [self.0.pack_task(), self.1.pack_task()]
         }
+    }
+
+    fn from_json(json: serde_json::Value) -> Result<Self, Error> {
+        Ok((T1::from_json(json[0].clone())?,
+            T2::from_json(json[1].clone())?,))
     }
 }
 
@@ -72,6 +89,12 @@ impl<T1: TaskInputElem, T2: TaskInputElem, T3: TaskInputElem> TaskInput for (T1,
         serde_json::json! {
             [self.0.pack_task(), self.1.pack_task(), self.2.pack_task()]
         }
+    }
+
+    fn from_json(json: serde_json::Value) -> Result<Self, Error> {
+        Ok((T1::from_json(json[0].clone())?,
+            T2::from_json(json[1].clone())?,
+            T3::from_json(json[2].clone())?))
     }
 }
 

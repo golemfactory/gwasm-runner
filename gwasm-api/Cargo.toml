@@ -10,3 +10,4 @@ description = "High level API for gWasmRunner compatible apps"
 [dependencies]
 serde="1.0.99"
 serde_json="1.0.40"
+failure = "0.1.5"
