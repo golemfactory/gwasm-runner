@@ -1,10 +1,9 @@
 use failure::Fail;
-use std::{io, path};
 use std::path::PathBuf;
+use std::{io, path};
 
 #[derive(Debug, Fail)]
 pub enum Error {
-
     #[fail(display = "{}", _0)]
     IO(#[cause] io::Error),
 
@@ -18,12 +17,11 @@ pub enum Error {
     Json(serde_json::error::Error),
 
     #[fail(display = "invalid arg")]
-    MetaExpected
+    MetaExpected,
 }
 
 impl Error {
-
-    pub fn invalid_path(path : &path::Path) -> Self {
+    pub fn invalid_path(path: &path::Path) -> Self {
         Error::InvalidPath(path.display().to_string())
     }
 }
