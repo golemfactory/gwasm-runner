@@ -1,38 +1,51 @@
-use std::path::{PathBuf, Path};
-use failure::{Error, Fail};
+use crate::error::Error;
+use crate::taskdef::{IntoTaskArg, TaskArg};
+use std::fs;
+/**
+ Binary Large Objects
 
-use crate::task_params::{TaskInputElem, InputDesc};
+**/
+use std::io::{self, Read, Seek, Write};
+use std::path::{Path, PathBuf};
 
+pub struct Blob(PathBuf);
 
-
-pub struct Blob {
-    pub path: Option<PathBuf>,
-}
-
-
-
-impl TaskInputElem for Blob {
-    fn to_input_desc() -> InputDesc {
-        InputDesc::Blob
-    }
-
-    fn pack_task(&self) -> serde_json::Value {
-        serde_json::json! {
-            {"path": self.path}
-        }
-    }
-
-    fn from_json(json: serde_json::Value) -> Result<Self, Error> {
-        Ok(Blob::new(""))
-    }
-}
-
+pub struct Output(pub(crate) PathBuf);
 
 impl Blob {
-
-    pub fn new(path: &str) -> Blob {
-        Blob{path: Option::from(Path::new(path).to_path_buf())}
+    pub fn from_output(output: Output) -> Self {
+        Blob(output.0)
     }
 
+    pub fn open(&self) -> io::Result<impl Read + Seek> {
+        fs::OpenOptions::new().read(true).open(&self.0)
+    }
+}
 
+impl Output {
+    pub fn open(&self) -> io::Result<impl Write + Seek> {
+        fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(&self.0)
+    }
+}
+
+impl IntoTaskArg for Blob {
+    fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
+        let path = self.0.strip_prefix(base)?;
+        path.to_str()
+            .ok_or_else(|| Error::invalid_path(&self.0))
+            .map(|v| TaskArg::Blob(v.into()))
+    }
+}
+
+impl IntoTaskArg for Output {
+    fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
+        let path = self.0.strip_prefix(base)?;
+        path.to_str()
+            .ok_or_else(|| Error::invalid_path(&self.0))
+            .map(|v| TaskArg::Output(v.into()))
+    }
 }
