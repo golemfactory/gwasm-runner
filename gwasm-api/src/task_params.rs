@@ -39,7 +39,7 @@ impl<S: Serialize + DeserializeOwned> TaskInputElem for S {
     }
 
     fn from_json(json: serde_json::Value) -> Result<Self, Error> {
-        Ok(serde_json::from_value(json)?)
+        Ok(serde_json::from_value(json["meta"].clone())?)
     }
 }
 
