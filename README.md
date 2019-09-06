@@ -22,3 +22,10 @@ Now you can build
 ```
 cargo build --release
 ```
+
+## building on Linux
+
+```
+sudo apt-get install clang-6.0 autoconf2.13 yasm
+cargo build --release
+```
