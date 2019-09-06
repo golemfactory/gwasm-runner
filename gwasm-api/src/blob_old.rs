@@ -23,7 +23,7 @@ impl TaskInputElem for Blob {
     }
 
     fn from_json(json: serde_json::Value) -> Result<Self, Error> {
-        Ok(Blob::new(""))
+        Ok(Blob::new(json["path"].as_str().unwrap()))
     }
 }
 

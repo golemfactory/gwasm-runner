@@ -1,5 +1,6 @@
 pub mod blob_old;
 pub mod task_params;
+pub mod dispatcher;
 
 pub use blob_old::{Blob};
 pub use task_params::{TaskResult, TaskInput, TaskInputElem, InputDesc};
