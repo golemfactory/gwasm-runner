@@ -9,7 +9,7 @@ use serde::de::Unexpected::Map;
 use crate::executor::{Executor, exec_for};
 use crate::splitter::{Splitter, split_into};
 use crate::merger::Merger;
-use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef};
+use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef, TaskArg};
 
 
 
@@ -85,31 +85,16 @@ fn save_task_def_vec(output_file: &Path, taskdefs: &Vec<TaskDef>) -> Result<(), 
 }
 
 fn save_task_def(output_file: &Path, taskdefs: &TaskDef) -> Result<(), Error> {
+
     let output_dir = output_file.parent().ok_or(ApiError::NoParent)?;
 
     let json = serde_json::to_value(taskdefs.into_arg(&output_dir)?)?;
     save_json(output_file, &json)
 }
 
-//pub fn load_params_vec<ArgsType: TaskInput>(params_path: &Path) -> Result<Vec<ArgsType>, Error> {
-//    let json = load_json(params_path)?;
-//    match json {
-//        serde_json::Value::Array(json_vec) => {
-//
-//            let mut params = vec!();
-//            for element in json_vec.into_iter() {
-//                params.push(load_params_json::<ArgsType>(element)?);
-//            }
-//            Ok(params)
-//        },
-//        _ => {
-//            Err(ApiError::InvalidParamsFormat{ message: String::from("Loading json: top object is not an Array.") })?
-//        }
-//    }
-//}
-
 fn load_task_def(taskdef_file: &Path) -> Result<TaskDef, Error> {
-    unimplemented!()
+    let json = load_json(taskdef_file)?;
+    Ok(serde_json::from_value::<TaskDef>(json)?)
 }
 
 pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef>(splitter: S, args: &Vec<String>) -> Result<(), Error> {
@@ -117,8 +102,6 @@ pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef>(splitter: S, args
     // TODO: check param len
     let work_dir = PathBuf::from(&args[0]);
     let split_args = &Vec::from_iter(args[1..].iter().cloned());
-
-    println!("Split args {:?}", split_args);
 
     let split_params = split_into(splitter, &work_dir, split_args)?;
 

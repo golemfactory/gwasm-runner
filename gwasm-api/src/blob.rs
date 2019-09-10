@@ -76,7 +76,7 @@ impl IntoTaskArg for Output {
 impl FromTaskArg for Output {
     fn from_arg(arg: TaskArg, _base: &Path) -> Result<Self, Error> {
         Ok(match arg {
-            TaskArg::Blob(path) => Output(PathBuf::from(&path)),
+            TaskArg::Output(path) => Output(PathBuf::from(&path)),
             _ => return Err(Error::OutputExpected),
         })
     }

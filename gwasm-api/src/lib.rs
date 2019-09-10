@@ -1,4 +1,3 @@
-pub mod map_reduce;
 pub mod dispatcher;
 
 pub use crate::splitter::{SplitContext};
