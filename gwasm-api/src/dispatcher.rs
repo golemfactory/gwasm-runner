@@ -7,16 +7,21 @@ use crate::{Blob, TaskResult, TaskInput};
 use std::iter::FromIterator;
 use serde::de::Unexpected::Map;
 
+use crate::executor::Executor;
+use crate::splitter::{Splitter, split_into};
+use crate::merger::Merger;
+use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef};
 
-pub trait MapReduce {
 
-    type ExecuteInput: TaskInput;
-    type ExecuteOutput: TaskInput;
-
-    fn split(args: &Vec<String>) -> Vec<Self::ExecuteInput>;
-    fn execute(params: Self::ExecuteInput) -> Self::ExecuteOutput;
-    fn merge(args: &Vec<String>, subtasks_result: &TaskResult<Self::ExecuteInput, Self::ExecuteOutput>);
-}
+//pub trait MapReduce {
+//
+//    type ExecuteInput: TaskInput;
+//    type ExecuteOutput: TaskInput;
+//
+//    fn split(args: &Vec<String>) -> Vec<Self::ExecuteInput>;
+//    fn execute(params: Self::ExecuteInput) -> Self::ExecuteOutput;
+//    fn merge(args: &Vec<String>, subtasks_result: &TaskResult<Self::ExecuteInput, Self::ExecuteOutput>);
+//}
 
 #[derive(Debug, Fail)]
 pub enum ApiError {
@@ -71,6 +76,15 @@ pub fn load_params_json<ArgsType: TaskInput>(json: serde_json::Value) -> Result<
     ArgsType::from_json(json)
 }
 
+fn save_task_def_vec(output_file: &Path, taskdefs: &Vec<TaskDef>) -> Result<(), Error> {
+
+    let json_params: Result<Vec<serde_json::Value>, Error> = taskdefs.into_iter().map(|taskdef| {
+        serde_json::to_value(taskdef)
+    }).collect();
+
+    save_json(output_file, &serde_json::json!(json_params?))
+}
+
 pub fn load_params_vec<ArgsType: TaskInput>(params_path: &Path) -> Result<Vec<ArgsType>, Error> {
     let json = load_json(params_path)?;
     match json {
@@ -88,7 +102,82 @@ pub fn load_params_vec<ArgsType: TaskInput>(params_path: &Path) -> Result<Vec<Ar
     }
 }
 
-pub fn dispatch_and_run_command<MapReduceType: MapReduce>() -> Result<(), Error> {
+//pub fn dispatch_and_run_command<MapReduceType: MapReduce>() -> Result<(), Error> {
+//    let mut args: Vec<String> = env::args().collect();
+//    // TODO: check param len
+//    let command = args[1].clone();
+//
+//    // Remove program name and command.
+//    args.drain(0..2);
+//
+//    if command == "split" {
+//        split_step::<MapReduceType>(&args)
+//    }
+//    else if command == "execute" {
+//        execute_step::<MapReduceType>(&args)
+//    }
+//    else if command == "merge" {
+//        merge_step::<MapReduceType>(&args)
+//    }
+//    else {
+//        Err(ApiError::NoCommand{ command })?
+//    }
+//}
+
+
+pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef>(splitter: S, args: &Vec<String>) -> Result<(), Error> {
+
+    // TODO: check param len
+    let work_dir = PathBuf::from(&args[0]);
+    let split_args = &Vec::from_iter(args[1..].iter().cloned());
+
+    let split_params = split_into(splitter, &work_dir, split_args)?;
+
+    let split_out_path = work_dir.join("tasks.json");
+    save_task_def_vec(&split_out_path, &split_params)
+}
+
+//pub fn execute_step<MapReduceType: MapReduce>(args: &Vec<String>) -> Result<(), Error>  {
+//
+//    let params_path = PathBuf::from(args[0].clone());
+//    let output_desc_path = PathBuf::from(args[1].clone());
+//
+//    let input_params = load_params::<MapReduceType::ExecuteInput>(&params_path)?;
+//    let output_desc = MapReduceType::execute(input_params);
+//
+//    save_params(&output_desc_path, &output_desc)
+//}
+//
+//pub fn merge_step<MapReduceType: MapReduce>(args: &Vec<String>) -> Result<(), Error>  {
+//
+//    let tasks_params_path = PathBuf::from(args[0].clone());
+//    let tasks_outputs_path = PathBuf::from(args[1].clone());
+//
+//    if args[2] != "--" {
+//        return Err(ApiError::NoSeparator)?;
+//    }
+//
+//    let input_params = load_params_vec::<MapReduceType::ExecuteInput>(&tasks_params_path)?;
+//    let outputs = load_params_vec::<MapReduceType::ExecuteOutput>(&tasks_outputs_path)?;
+//
+//    let in_out_pack = input_params.into_iter()
+//        .zip(outputs.into_iter())
+//        .collect();
+//
+//    let original_args = Vec::from_iter(args[3..].iter().cloned());
+//
+//    MapReduceType::merge(&original_args, &in_out_pack);
+//    Ok(())
+//}
+
+
+
+pub fn run<S: Splitter<WorkItem = In>,
+           E: Executor<S::WorkItem, Out>,
+           M: Merger<In, Out>,
+           Out: IntoTaskDef + FromTaskDef,
+           In: IntoTaskDef + FromTaskDef>(splitter: S, executor: E, merger: M) -> Result<(), Error> {
+
     let mut args: Vec<String> = env::args().collect();
     // TODO: check param len
     let command = args[1].clone();
@@ -97,59 +186,15 @@ pub fn dispatch_and_run_command<MapReduceType: MapReduce>() -> Result<(), Error>
     args.drain(0..2);
 
     if command == "split" {
-        split_step::<MapReduceType>(&args)
+        split_step(splitter, &args)
     }
-    else if command == "execute" {
-        execute_step::<MapReduceType>(&args)
-    }
-    else if command == "merge" {
-        merge_step::<MapReduceType>(&args)
-    }
+//    else if command == "execute" {
+//        execute_step::<MapReduceType>(&args)
+//    }
+//    else if command == "merge" {
+//        merge_step::<MapReduceType>(&args)
+//    }
     else {
         Err(ApiError::NoCommand{ command })?
     }
-}
-
-
-pub fn split_step<MapReduceType: MapReduce>(args: &Vec<String>) -> Result<(), Error> {
-
-    // TODO: check param len
-    let work_dir = PathBuf::from(&args[0]);
-    let split_params = MapReduceType::split(&Vec::from_iter(args[1..].iter().cloned()));
-
-    let split_out_path = work_dir.join("tasks.json");
-    save_params_vec(&split_out_path, &split_params)
-}
-
-pub fn execute_step<MapReduceType: MapReduce>(args: &Vec<String>) -> Result<(), Error>  {
-
-    let params_path = PathBuf::from(args[0].clone());
-    let output_desc_path = PathBuf::from(args[1].clone());
-
-    let input_params = load_params::<MapReduceType::ExecuteInput>(&params_path)?;
-    let output_desc = MapReduceType::execute(input_params);
-
-    save_params(&output_desc_path, &output_desc)
-}
-
-pub fn merge_step<MapReduceType: MapReduce>(args: &Vec<String>) -> Result<(), Error>  {
-
-    let tasks_params_path = PathBuf::from(args[0].clone());
-    let tasks_outputs_path = PathBuf::from(args[1].clone());
-
-    if args[2] != "--" {
-        return Err(ApiError::NoSeparator)?;
-    }
-
-    let input_params = load_params_vec::<MapReduceType::ExecuteInput>(&tasks_params_path)?;
-    let outputs = load_params_vec::<MapReduceType::ExecuteOutput>(&tasks_outputs_path)?;
-
-    let in_out_pack = input_params.into_iter()
-        .zip(outputs.into_iter())
-        .collect();
-
-    let original_args = Vec::from_iter(args[3..].iter().cloned());
-
-    MapReduceType::merge(&original_args, &in_out_pack);
-    Ok(())
 }

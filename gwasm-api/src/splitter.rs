@@ -53,6 +53,7 @@ impl SplitContext for WorkDirCtx {
 pub(crate) fn split_into<S: Splitter>(
     splitter: S,
     base_path: &Path,
+    args: &Vec<String>
 ) -> Result<Vec<TaskDef>, Error> {
     let mut ctx = WorkDirCtx {
         id: 1000,
