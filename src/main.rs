@@ -2,8 +2,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use failure::ResultExt;
-use structopt::*;
 use sp_wasm_engine::prelude::*;
+use structopt::*;
 
 #[derive(Debug, Clone)]
 enum Backend {
