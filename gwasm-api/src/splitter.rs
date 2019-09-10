@@ -88,7 +88,7 @@ mod test {
 
     #[test]
     fn test_split() {
-        let tasks = split_into(my_spliter, &PathBuf::from("/tmp")).unwrap();
+        let tasks = split_into(my_spliter, &PathBuf::from("/tmp"), &vec![]).unwrap();
 
         eprintln!("{}", serde_json::to_string(&tasks).unwrap());
     }

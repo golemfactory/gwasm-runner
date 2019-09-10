@@ -1,11 +1,9 @@
-pub mod task_params;
 pub mod map_reduce;
 pub mod dispatcher;
 
-pub use task_params::{TaskResult, TaskInput, TaskInputElem, InputDesc};
-
 pub use crate::splitter::{SplitContext};
 pub use crate::blob::{Blob, Output};
+pub use crate::dispatcher::{TaskResult};
 
 use crate::executor::Executor;
 use crate::splitter::Splitter;
