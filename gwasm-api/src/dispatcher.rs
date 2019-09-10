@@ -38,15 +38,6 @@ pub enum ApiError {
 }
 
 
-//pub fn save_params_vec<SplitOutputType : TaskInput>(output_file: &Path, split_params: &Vec<SplitOutputType>) -> Result<(), Error> {
-//    let json_params: Vec<serde_json::Value> = split_params.iter().map(TaskInput::pack_task).collect();
-//    save_json(output_file, &serde_json::json!(json_params))
-//}
-//
-//pub fn save_params<SplitOutputType : TaskInput>(output_file: &Path, split_params: &SplitOutputType) -> Result<(), Error> {
-//    let json: serde_json::Value = split_params.pack_task();
-//    save_json(output_file, &json)
-//}
 
 pub fn save_json(output_file: &Path, json: &serde_json::Value) -> Result<(), Error> {
 
@@ -60,19 +51,6 @@ pub fn load_json(params_path: &Path) -> Result<serde_json::Value, Error> {
     let content = fs::read_to_string(params_path)?;
     return Ok(serde_json::from_str(&content)?);
 }
-
-//pub fn load_params<ArgsType: TaskInput>(params_path: &Path) -> Result<ArgsType, Error> {
-//    let json = load_json(params_path)?;
-//    load_params_json::<ArgsType>(json)
-//}
-//
-//pub fn load_params_json<ArgsType: TaskInput>(json: serde_json::Value) -> Result<ArgsType, Error> {
-//    if !json.is_array() {
-//        Err(ApiError::InvalidParamsFormat{ message: String::from("Top level array not found") })?
-//    }
-//
-//    ArgsType::from_json(json)
-//}
 
 fn save_task_def_vec(output_file: &Path, taskdefs: &Vec<TaskDef>) -> Result<(), Error> {
 
