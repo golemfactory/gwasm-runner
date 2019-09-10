@@ -18,7 +18,11 @@ pub enum Error {
     Json(serde_json::error::Error),
 
     #[fail(display = "invalid arg")]
-    MetaExpected
+    MetaExpected,
+
+    #[fail(display = "invalid arg: blob expected")]
+    BlobExpected
+
 }
 
 impl Error {
