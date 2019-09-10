@@ -43,7 +43,6 @@ impl Output {
 
 impl IntoTaskArg for Blob {
     fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
-        println!("Serialzied Blob {}, working dir {}", self.0.display(), base.display());
         let path = self.0.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
