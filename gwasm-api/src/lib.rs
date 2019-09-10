@@ -1,12 +1,12 @@
-pub mod blob_old;
 pub mod task_params;
 pub mod map_reduce;
 pub mod dispatcher;
 
-pub use blob_old::{Blob};
 pub use task_params::{TaskResult, TaskInput, TaskInputElem, InputDesc};
 
-use crate::blob::Output;
+pub use crate::splitter::{SplitContext};
+pub use crate::blob::{Blob, Output};
+
 use crate::executor::Executor;
 use crate::splitter::Splitter;
 use crate::merger::Merger;

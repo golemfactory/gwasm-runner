@@ -37,6 +37,10 @@ pub enum ApiError {
     InvalidParamsFormat {
         message: String
     },
+    #[fail(display = "Json conversion error: {}.", error)]
+    JsonError {
+        error: serde_json::error::Error
+    },
 }
 
 
@@ -78,9 +82,10 @@ pub fn load_params_json<ArgsType: TaskInput>(json: serde_json::Value) -> Result<
 
 fn save_task_def_vec(output_file: &Path, taskdefs: &Vec<TaskDef>) -> Result<(), Error> {
 
-    let json_params: Result<Vec<serde_json::Value>, Error> = taskdefs.into_iter().map(|taskdef| {
-        serde_json::to_value(taskdef)
-    }).collect();
+    let json_params: Result<Vec<serde_json::Value>, _> = taskdefs
+        .into_iter()
+        .map(|taskdef| { serde_json::to_value(taskdef) })
+        .collect::<Result<_, _>>();
 
     save_json(output_file, &serde_json::json!(json_params?))
 }
