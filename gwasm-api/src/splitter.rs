@@ -58,7 +58,7 @@ pub(crate) fn split_into<S: Splitter>(
     let mut ctx = WorkDirCtx {
         id: 1000,
         work_dir: base_path.into(),
-        args: vec![],
+        args: args.clone(),
     };
     splitter
         .split(&mut ctx)

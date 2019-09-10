@@ -136,6 +136,8 @@ pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef>(splitter: S, args
     let work_dir = PathBuf::from(&args[0]);
     let split_args = &Vec::from_iter(args[1..].iter().cloned());
 
+    println!("Split args {:?}", split_args);
+
     let split_params = split_into(splitter, &work_dir, split_args)?;
 
     let split_out_path = work_dir.join("tasks.json");
