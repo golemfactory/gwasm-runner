@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::io;
 use std::path::Path;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TaskArg {
     Meta(serde_json::Value),
@@ -13,7 +13,7 @@ pub enum TaskArg {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TaskDef(Vec<TaskArg>);
+pub struct TaskDef(pub Vec<TaskArg>);
 
 pub trait IntoTaskArg {
     fn into_arg(&self, base: &Path) -> Result<TaskArg, Error>;

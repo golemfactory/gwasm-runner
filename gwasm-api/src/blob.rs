@@ -17,16 +17,6 @@ pub struct Output(pub(crate) PathBuf);
 
 impl Blob {
 
-    // FIXME: Probably temporary, remove in future.
-    pub fn new() -> Blob {
-        Blob(PathBuf::from(""))
-    }
-
-    // FIXME: Temporary
-    pub fn get_path(&self) -> &Path {
-        return &self.0;
-    }
-
     pub fn from_output(output: Output) -> Self {
         Blob(output.0)
     }
@@ -44,11 +34,21 @@ impl Output {
             .write(true)
             .open(&self.0)
     }
+
+    #[inline]
+    pub fn into_blob(self) -> Blob {
+        Blob::from_output(self)
+    }
+
+    pub fn save_bytes(self, data: impl AsRef<[u8]>) -> Result<Blob, Error> {
+        let data = data.as_ref();
+        self.open()?.write_all(data)?;
+        Ok(Blob::from_output(self))
+    }
 }
 
 impl IntoTaskArg for Blob {
     fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
-        println!("Serialzied Blob {}, working dir {}", self.0.display(), base.display());
         let path = self.0.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
@@ -58,10 +58,10 @@ impl IntoTaskArg for Blob {
 
 impl FromTaskArg for Blob {
     fn from_arg(arg: TaskArg, base: &Path) -> Result<Self, Error> {
-        Ok(match arg {
-            TaskArg::Blob(path) => Blob(PathBuf::from(&base.join(path))),
-            _ => return Err(Error::BlobExpected),
-        })
+        match arg {
+            TaskArg::Blob(path) => Ok(Blob(base.join(path))),
+            _ => Err(Error::BlobExpected),
+        }
     }
 }
 
