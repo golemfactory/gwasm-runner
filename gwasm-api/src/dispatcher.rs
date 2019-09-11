@@ -57,8 +57,7 @@ pub fn save_json(output_file: &Path, json: &serde_json::Value) -> Result<(), Err
 }
 
 pub fn load_json(params_path: &Path) -> Result<serde_json::Value, Error> {
-    let content = fs::read_to_string(params_path)?;
-    return Ok(serde_json::from_str(&content)?);
+    Ok(serde_json::from_reader(fs::OpenOptions::new().read(true).open(params_path)?)?)
 }
 
 //pub fn load_params<ArgsType: TaskInput>(params_path: &Path) -> Result<ArgsType, Error> {
