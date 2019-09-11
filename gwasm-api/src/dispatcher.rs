@@ -167,14 +167,16 @@ mod test {
 
     use crate::splitter::{SplitContext};
     use crate::blob::{Blob, Output};
-    use crate::dispatcher::{split_step};
+    use crate::dispatcher::{split_step, load_task_def_vec};
     use std::path::PathBuf;
+    use std::fs;
+    use crate::taskdef::TaskArg;
 
     /// =================================== ///
     /// Test Structures
 
     fn splitter1(ctx: &mut dyn SplitContext) -> Vec<(u32,)> {
-        return vec![(3,)]
+        return vec![(3,), (5,)]
     }
 
     fn splitter2(ctx: &mut dyn SplitContext) -> Vec<(u32, Output)> {
@@ -182,17 +184,70 @@ mod test {
     }
 
     /// =================================== ///
-    /// Tests
+    /// Test helpers
 
+    fn create_test_dir(name: &str) -> PathBuf {
+        let test_dir = PathBuf::from("test-results/").join(name);
+        fs::create_dir_all(&test_dir).unwrap();
+        return test_dir;
+    }
+
+    fn remove_test_dir() {
+        fs::remove_dir_all("test-results/").unwrap()
+    }
+
+    /// =================================== ///
+    /// Tests
 
     #[test]
     fn test_splitter_with_u32() {
-        split_step(&splitter1, &vec![String::from("")]).unwrap();
+        let test_dir = create_test_dir("test_splitter_with_u32/");
+
+        split_step(&splitter1, &vec![test_dir.to_str().unwrap().to_owned()]).unwrap();
+
+        let tasks_defs_file = test_dir.clone().join("tasks.json");
+        let tasks_defs = load_task_def_vec(&tasks_defs_file).unwrap();
+
+        // Two subtasks
+        assert_eq!(tasks_defs.len(), 2);
+
+        // Each subtasks has one element of type Meta
+        assert_eq!(tasks_defs[0].0.len(), 1);
+        assert_eq!(tasks_defs[1].0.len(), 1);
+
+        match &((tasks_defs[0]).0)[0] {
+            TaskArg::Meta(x) => (),
+            _ => panic!("Should be meta.")
+        }
+
+        match &((tasks_defs[1]).0)[0] {
+            TaskArg::Meta(x) => (),
+            _ => panic!("Should be meta.")
+        }
     }
 
     #[test]
     fn test_splitter_with_blob() {
-        split_step(&splitter2, &vec![String::from("")]).unwrap();
+        let test_dir = create_test_dir("test_splitter_with_blob/");
+
+        split_step(&splitter2, &vec![test_dir.to_str().unwrap().to_owned()]).unwrap();
+
+        let tasks_defs_file = test_dir.clone().join("tasks.json");
+        let tasks_defs = load_task_def_vec(&tasks_defs_file).unwrap();
+
+        // One subtask two elements
+        assert_eq!(tasks_defs.len(), 1);
+        assert_eq!(tasks_defs[0].0.len(), 2);
+
+        match &((tasks_defs[0]).0)[0] {
+            TaskArg::Meta(x) => (),
+            _ => panic!("Should be blob.")
+        }
+
+        match &((tasks_defs[0]).0)[1] {
+            TaskArg::Output(x) => (),
+            _ => panic!("Should be output.")
+        }
     }
 
 }
