@@ -17,11 +17,6 @@ pub struct Output(pub(crate) PathBuf);
 
 impl Blob {
 
-    // FIXME: Temporary
-    pub fn get_path(&self) -> &Path {
-        return &self.0;
-    }
-
     pub fn from_output(output: Output) -> Self {
         Blob(output.0)
     }
