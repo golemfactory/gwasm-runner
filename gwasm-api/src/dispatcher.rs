@@ -67,13 +67,11 @@ fn save_task_def(output_file: &Path, taskdef: &TaskDef) -> Result<(), Error> {
 }
 
 fn load_task_def(taskdef_file: &Path) -> Result<TaskDef, Error> {
-    let json = load_json(taskdef_file)?;
-    Ok(serde_json::from_value::<TaskDef>(json)?)
+    Ok(serde_json::from_reader(fs::OpenOptions::new().read(true).open(taskdef_file)?)?)
 }
 
 fn load_task_def_vec(taskdef_file: &Path) -> Result<Vec<TaskDef>, Error> {
-    let content = fs::read_to_string(taskdef_file)?;
-    Ok(serde_json::from_str::<Vec<TaskDef>>(&content)?)
+    Ok(serde_json::from_reader(fs::OpenOptions::new().read(true).open(taskdef_file)?)?)
 }
 
 /// =================================== ///
