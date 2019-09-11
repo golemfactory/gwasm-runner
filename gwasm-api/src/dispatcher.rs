@@ -62,11 +62,11 @@ fn save_task_def_vec(output_file: &Path, taskdefs: &Vec<TaskDef>) -> Result<(), 
     save_json(output_file, &serde_json::json!(json_params?))
 }
 
-fn save_task_def(output_file: &Path, taskdefs: &TaskDef) -> Result<(), Error> {
+fn save_task_def(output_file: &Path, taskdef: &TaskDef) -> Result<(), Error> {
 
     let output_dir = output_file.parent().ok_or(ApiError::NoParent)?;
 
-    let json = serde_json::to_value(taskdefs.into_arg(&output_dir)?)?;
+    let json = serde_json::to_value(taskdef)?;
     save_json(output_file, &json)
 }
 
@@ -162,15 +162,20 @@ pub fn run<S: Splitter<WorkItem = In>,
 }
 
 
+/// =================================== ///
+/// Tests
+
 #[cfg(test)]
 mod test {
 
     use crate::splitter::{SplitContext};
     use crate::blob::{Blob, Output};
-    use crate::dispatcher::{split_step, load_task_def_vec};
+    use crate::dispatcher::{split_step, load_task_def_vec, execute_step, save_task_def};
+    use crate::taskdef::{TaskArg, TaskDef};
     use std::path::PathBuf;
     use std::fs;
-    use crate::taskdef::TaskArg;
+    use serde_json;
+
 
     /// =================================== ///
     /// Test Structures
@@ -181,6 +186,14 @@ mod test {
 
     fn splitter2(ctx: &mut dyn SplitContext) -> Vec<(u32, Output)> {
         return vec![(3, ctx.new_blob())]
+    }
+
+    fn execute1(x: u32) -> (u32,) {
+        (x - 2,)
+    }
+
+    fn execute2(x: u32, out: Output) -> (Blob,) {
+        (Blob::from_output(out),)
     }
 
     /// =================================== ///
@@ -248,6 +261,18 @@ mod test {
             TaskArg::Output(x) => (),
             _ => panic!("Should be output.")
         }
+    }
+
+    #[test]
+    fn test_execute_with_u32() {
+        let test_dir = create_test_dir("test_execute_with_u32/");
+        let out_file = test_dir.clone().join("out1.json").to_str().unwrap().to_owned();
+        let tasks_defs_file = test_dir.clone().join("task1.json");
+        let task_def = vec![TaskArg::Meta(serde_json::json!(5))];
+
+        save_task_def(&tasks_defs_file, &TaskDef(task_def));
+
+        execute_step(&execute1, &vec![tasks_defs_file.to_str().unwrap().to_owned(), out_file]).unwrap();
     }
 
 }
