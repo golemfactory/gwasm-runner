@@ -22,3 +22,11 @@ Now you can build
 ```
 cargo build --release
 ```
+
+## building on Linux
+
+You need to have python2 alias to python2.7
+```
+sudo apt-get install clang-6.0 autoconf2.13 yasm
+cargo build --release
+```

@@ -39,6 +39,17 @@ impl Output {
             .write(true)
             .open(&self.0)
     }
+
+    #[inline]
+    pub fn into_blob(self) -> Blob {
+        Blob::from_output(self)
+    }
+
+    pub fn save_bytes(self, data: impl AsRef<[u8]>) -> Result<Blob, Error> {
+        let data = data.as_ref();
+        self.open()?.write_all(data)?;
+        Ok(Blob::from_output(self))
+    }
 }
 
 impl IntoTaskArg for Blob {
@@ -52,10 +63,10 @@ impl IntoTaskArg for Blob {
 
 impl FromTaskArg for Blob {
     fn from_arg(arg: TaskArg, base: &Path) -> Result<Self, Error> {
-        Ok(match arg {
-            TaskArg::Blob(path) => Blob(PathBuf::from(&base.join(path))),
-            _ => return Err(Error::BlobExpected),
-        })
+        match arg {
+            TaskArg::Blob(path) => Ok(Blob(base.join(path))),
+            _ => Err(Error::BlobExpected),
+        }
     }
 }
 

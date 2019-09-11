@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
-use std::fs;
 use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use failure::{Error, Fail};
 use std::iter::FromIterator;
@@ -23,9 +23,7 @@ pub enum ApiError {
     #[fail(display = "Expected -- separator.")]
     NoSeparator,
     #[fail(display = "No such command {}.", command)]
-    NoCommand {
-        command: String,
-    },
+    NoCommand { command: String },
     #[fail(display = "Invalid params format: {}.", message)]
     InvalidParamsFormat {
         message: String
@@ -40,7 +38,6 @@ pub enum ApiError {
 /// Parameters saving/loading
 
 pub fn save_json(output_file: &Path, json: &serde_json::Value) -> Result<(), Error> {
-
     let work_dir = output_file.parent().ok_or(ApiError::NoParent)?;
 
     fs::write(output_file, serde_json::to_string_pretty(&json)?)?;
@@ -83,7 +80,7 @@ fn load_task_def_vec(taskdef_file: &Path) -> Result<Vec<TaskDef>, Error> {
 /// =================================== ///
 /// Map/Reduce steps
 
-pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef>(splitter: S, args: &Vec<String>) -> Result<(), Error> {
+pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(splitter: S, args: &Vec<String>) -> Result<(), Error> {
 
     // TODO: check param len
     let work_dir = PathBuf::from(&args[0]);
