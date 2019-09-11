@@ -58,7 +58,7 @@ fn run_remote_code(
     Ok(())
 }
 
-pub fn run_on_local(wasm_path: &Path, args: &Vec<String>) -> Fallible<()> {
+pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
     let engine_ref = Sandbox::init_ejs()?;
     let mut w = WorkDir::new("local")?;
 

@@ -18,8 +18,12 @@ pub enum Error {
 
     #[fail(display = "invalid arg")]
     MetaExpected,
-    #[fail(display = "invalid arg: blob expected")]
+
+    #[fail(display = "Expected blob entry.")]
     BlobExpected,
+
+    #[fail(display = "Expected output entry.")]
+    OutputExpected,
 }
 
 impl Error {

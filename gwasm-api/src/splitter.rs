@@ -15,11 +15,12 @@ pub trait Splitter {
     fn split(self, context: &mut SplitContext) -> Vec<Self::WorkItem>;
 }
 
-impl<It: IntoIterator, F: FnOnce(&mut dyn SplitContext) -> It> Splitter for F
+impl<Out, F: (FnOnce(&mut dyn SplitContext) -> Out)> Splitter for F
 where
-    It::Item: IntoTaskDef + FromTaskDef,
+    Out: IntoIterator,
+    Out::Item: IntoTaskDef + FromTaskDef,
 {
-    type WorkItem = It::Item;
+    type WorkItem = Out::Item;
 
     fn split(self, context: &mut dyn SplitContext) -> Vec<Self::WorkItem> {
         self(context).into_iter().collect()
@@ -53,11 +54,12 @@ impl SplitContext for WorkDirCtx {
 pub(crate) fn split_into<S: Splitter>(
     splitter: S,
     base_path: &Path,
+    args: &Vec<String>,
 ) -> Result<Vec<TaskDef>, Error> {
     let mut ctx = WorkDirCtx {
         id: 1000,
         work_dir: base_path.into(),
-        args: vec![],
+        args: args.clone(),
     };
     splitter
         .split(&mut ctx)
@@ -87,7 +89,7 @@ mod test {
 
     #[test]
     fn test_split() {
-        let tasks = split_into(my_spliter, &PathBuf::from("/tmp")).unwrap();
+        let tasks = split_into(my_spliter, &PathBuf::from("/tmp"), &vec![]).unwrap();
 
         eprintln!("{}", serde_json::to_string(&tasks).unwrap());
     }

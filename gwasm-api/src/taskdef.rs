@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::io;
 use std::path::{Path, PathBuf};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TaskArg {
     Meta(serde_json::Value),
@@ -28,7 +28,7 @@ impl TaskArg {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TaskDef(Vec<TaskArg>);
+pub struct TaskDef(pub Vec<TaskArg>);
 
 impl TaskDef {
     pub fn blobs(&self) -> impl IntoIterator<Item = &str> {

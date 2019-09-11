@@ -1,11 +1,9 @@
-pub mod blob_old;
 pub mod dispatcher;
-pub mod task_params;
 
-pub use blob_old::Blob;
-pub use task_params::{InputDesc, TaskInput, TaskInputElem, TaskResult};
+pub use crate::blob::{Blob, Output};
+pub use crate::dispatcher::TaskResult;
+pub use crate::splitter::SplitContext;
 
-use crate::blob::Output;
 use crate::executor::Executor;
 use crate::merger::Merger;
 use crate::splitter::Splitter;
@@ -23,16 +21,3 @@ mod merger;
 mod splitter;
 
 pub use taskdef::{TaskArg, TaskDef};
-
-pub fn run<S: Splitter, E: executor::Executor<S::WorkItem, Out>, Out: IntoTaskDef>(s: S, e: E) {
-    unimplemented!()
-}
-
-pub trait MapReduce<In: FromTaskDef + IntoTaskDef, Out: FromTaskDef + IntoTaskDef>:
-    Splitter<WorkItem = In> + Executor<In, Out> + Merger<In, Out>
-{
-}
-
-// pub fn run<S: Splitter, E: executor::Executor<S::WorkItem, Out>, Out: IntoTaskDef>(s: S, e: E) {
-//     unimplemented!()
-// }

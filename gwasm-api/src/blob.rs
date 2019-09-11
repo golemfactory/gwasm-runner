@@ -9,7 +9,6 @@ use std::io::{self, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
 pub struct Blob(PathBuf);
-
 pub struct Output(pub(crate) PathBuf);
 
 impl Blob {
@@ -67,5 +66,14 @@ impl IntoTaskArg for Output {
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
             .map(|v| TaskArg::Output(v.into()))
+    }
+}
+
+impl FromTaskArg for Output {
+    fn from_arg(arg: TaskArg, base: &Path) -> Result<Self, Error> {
+        Ok(match arg {
+            TaskArg::Output(path) => Output(PathBuf::from(&base.join(path))),
+            _ => return Err(Error::OutputExpected),
+        })
     }
 }
