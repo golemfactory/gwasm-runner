@@ -5,6 +5,11 @@ use failure::ResultExt;
 use sp_wasm_engine::prelude::*;
 use structopt::*;
 
+mod local_runner;
+mod workdir;
+
+use local_runner::run_on_local;
+
 #[derive(Debug, Clone)]
 enum Backend {
     Local,
@@ -32,15 +37,12 @@ struct Opt {
     /// Backend type to use
     #[structopt(long, short, default_value = "Local")]
     backend: Backend,
-    /// Wasm App binary path to run. There should be an appropriate `.js` file within the same dir.
-    #[structopt(long, short, parse(from_os_str))]
-    wasm_app: PathBuf,
     /// Verbosity level. Add more v's to make app more verbose.
     #[structopt(short, parse(from_occurrences))]
     verbose: u8,
-    /// List of volumes to bind mount
-    #[structopt(long)]
-    volume: Vec<String>,
+    /// Wasm App binary path to run. There should be an appropriate `.js` file within the same dir.
+    #[structopt(parse(from_os_str))]
+    wasm_app: PathBuf,
     /// All other args that will be passed to the Wasm App
     wasm_app_args: Vec<String>,
 }
@@ -66,7 +68,7 @@ pub fn run_wasm_app(
     let app_js = app.with_extension("js");
     let app_wasm = app.with_extension("wasm");
 
-    sandbox.run(app_js.to_str().unwrap(), app_wasm.to_str().unwrap())?;
+    sandbox.run(app_js.as_path(), app_wasm.as_path())?;
 
     Ok(())
 }
@@ -83,7 +85,7 @@ fn main() -> failure::Fallible<()> {
     );
 
     match opts.backend {
-        Backend::Local => run_wasm_app(opts.volume, opts.wasm_app, opts.wasm_app_args),
+        Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
         _ => unimplemented!(),
     }
 }

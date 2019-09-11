@@ -9,7 +9,7 @@ use crate::blob::Output;
 use crate::executor::Executor;
 use crate::merger::Merger;
 use crate::splitter::Splitter;
-use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef};
+use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -22,12 +22,10 @@ mod executor;
 mod merger;
 mod splitter;
 
+pub use taskdef::{TaskArg, TaskDef};
+
 pub fn run<S: Splitter, E: executor::Executor<S::WorkItem, Out>, Out: IntoTaskDef>(s: S, e: E) {
     unimplemented!()
-}
-
-pub trait Merger<In, Out> {
-    fn merge(self, tasks: Vec<(In, Out)>);
 }
 
 pub trait MapReduce<In: FromTaskDef + IntoTaskDef, Out: FromTaskDef + IntoTaskDef>:

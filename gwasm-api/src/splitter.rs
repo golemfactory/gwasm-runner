@@ -1,7 +1,6 @@
 use crate::blob::Output;
 use crate::error::Error;
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
-use crate::taskdef::{IntoTaskDef, TaskDef};
 use std::path::{Path, PathBuf};
 
 pub trait SplitContext {
@@ -18,9 +17,9 @@ pub trait Splitter {
 
 impl<It: IntoIterator, F: FnOnce(&mut dyn SplitContext) -> It> Splitter for F
 where
-    It::Item: IntoTaskDef,
+    It::Item: IntoTaskDef + FromTaskDef,
 {
-    type WorkItem = Out::Item;
+    type WorkItem = It::Item;
 
     fn split(self, context: &mut dyn SplitContext) -> Vec<Self::WorkItem> {
         self(context).into_iter().collect()

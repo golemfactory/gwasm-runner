@@ -106,37 +106,16 @@ pub fn input_desc_from_fn<T: TaskInput, F: FnOnce(()) -> Vec<T>>(_: F) -> Vec<In
 
 #[cfg(test)]
 mod test {
-    use crate::{input_desc_from_fn, Blob, TaskInput};
+    use crate::{Blob, TaskInput};
 
     type Args = ();
-
-    fn produce(_: Args) -> Vec<(u64, Blob)> {
-        vec![(10, Blob::default()), (11, Blob::default())]
-    }
 
     fn map((id, f): (u64, Blob)) -> (Blob,) {
         unimplemented!()
     }
 
-    fn reduce(_: Args, chunks: TaskResult<(u64, Blob), (Blob,)>) {
-        unimplemented!()
-    }
-
     fn produce2(_: Args) -> Vec<(String, String, (u32, u32))> {
         unimplemented!()
-    }
-
-    #[test]
-    fn test_types() {
-        eprintln!("prod={:?}", input_desc_from_fn(produce));
-        eprintln!(
-            "meta prod={:?}",
-            input_desc_from_fn(|()| vec![(1, Blob::default()), (2, Blob::default())])
-        );
-        eprintln!("prod2={:?}", input_desc_from_fn(produce2));
-
-        let v: Vec<serde_json::Value> = produce(()).iter().map(TaskInput::pack_task).collect();
-        eprintln!("json={}", serde_json::to_string(&v).unwrap());
     }
 
 }
