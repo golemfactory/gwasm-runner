@@ -147,7 +147,7 @@ pub fn run<S: Splitter<WorkItem = In>,
     if command == "split" {
         split_step(splitter, &args)
     }
-    else if command == "execute" {
+    else if command == "exec" {
         execute_step(executor, &args)
     }
     else if command == "merge" {
