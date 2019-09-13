@@ -9,6 +9,9 @@ use crate::executor::{exec_for, Executor};
 use crate::merger::{merge_for, Merger};
 use crate::splitter::{split_into, Splitter};
 use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef};
+use serde::{Deserialize, Serialize};
+use std::io::{BufReader, BufWriter};
+use serde::de::DeserializeOwned;
 
 pub type TaskResult<In, Out> = Vec<(In, Out)>;
 
@@ -29,46 +32,20 @@ pub enum ApiError {
 /// =================================== ///
 /// Parameters saving/loading
 
-pub fn save_json(output_file: &Path, json: &serde_json::Value) -> Result<(), Error> {
-    let work_dir = output_file.parent().ok_or(ApiError::NoParent)?;
 
-    fs::write(output_file, serde_json::to_string_pretty(&json)?)?;
+fn load_from<T : DeserializeOwned>(json_file : &Path) -> Result<T, Error> {
+    let mut inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
+
+    Ok(serde_json::from_reader(inf)?)
+}
+
+fn save_to<T: Serialize>(output_file : &Path, value : &T) -> Result<(), Error> {
+    let outf = BufWriter::new(fs::OpenOptions::new().write(true).create(true).truncate(true).open(output_file)?);
+    serde_json::to_writer_pretty(outf, value)?;
+
     Ok(())
 }
 
-pub fn load_json(params_path: &Path) -> Result<serde_json::Value, Error> {
-    Ok(serde_json::from_reader(
-        fs::OpenOptions::new().read(true).open(params_path)?,
-    )?)
-}
-
-fn save_task_def_vec(output_file: &Path, taskdefs: &Vec<TaskDef>) -> Result<(), Error> {
-    let json_params: Result<Vec<serde_json::Value>, _> = taskdefs
-        .into_iter()
-        .map(|taskdef| serde_json::to_value(taskdef))
-        .collect::<Result<_, _>>();
-
-    save_json(output_file, &serde_json::json!(json_params?))
-}
-
-fn save_task_def(output_file: &Path, taskdef: &TaskDef) -> Result<(), Error> {
-    let output_dir = output_file.parent().ok_or(ApiError::NoParent)?;
-
-    let json = serde_json::to_value(taskdef)?;
-    save_json(output_file, &json)
-}
-
-fn load_task_def(taskdef_file: &Path) -> Result<TaskDef, Error> {
-    Ok(serde_json::from_reader(
-        fs::OpenOptions::new().read(true).open(taskdef_file)?,
-    )?)
-}
-
-fn load_task_def_vec(taskdef_file: &Path) -> Result<Vec<TaskDef>, Error> {
-    Ok(serde_json::from_reader(
-        fs::OpenOptions::new().read(true).open(taskdef_file)?,
-    )?)
-}
 
 /// =================================== ///
 /// Map/Reduce steps
@@ -84,7 +61,7 @@ pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     let split_params = split_into(splitter, &work_dir, split_args)?;
 
     let split_out_path = work_dir.join("tasks.json");
-    save_task_def_vec(&split_out_path, &split_params)
+    save_to( &split_out_path, &split_params)
 }
 
 pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
@@ -95,10 +72,10 @@ pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     let output_desc_path = PathBuf::from(args[1].clone());
     let output_dir = output_desc_path.parent().ok_or(ApiError::NoParent)?;
 
-    let input_params = load_task_def(&params_path)?;
+    let input_params = load_from(&params_path)?;
     let output_desc = exec_for(&executor, input_params, &output_dir)?;
 
-    save_task_def(&output_desc_path, &output_desc)
+    save_to(&output_desc_path, &output_desc)
 }
 
 pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
@@ -115,8 +92,8 @@ pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
         return Err(ApiError::NoSeparator)?;
     }
 
-    let input_params = load_task_def_vec(&tasks_params_path)?;
-    let outputs = load_task_def_vec(&tasks_outputs_path)?;
+    let input_params: Vec<TaskDef> = load_from(&tasks_params_path)?;
+    let outputs : Vec<TaskDef> = load_from(&tasks_outputs_path)?;
 
     let in_out_pack = input_params.into_iter().zip(outputs.into_iter()).collect();
 
@@ -170,7 +147,7 @@ pub fn run<
 mod test {
 
     use crate::blob::{Blob, Output};
-    use crate::dispatcher::{execute_step, load_task_def_vec, save_task_def, split_step};
+    use super::{execute_step, split_step, load_from, save_to};
     use crate::splitter::SplitContext;
     use crate::taskdef::{TaskArg, TaskDef};
     use serde_json;
@@ -219,7 +196,7 @@ mod test {
         split_step(&splitter1, &vec![test_dir.to_str().unwrap().to_owned()]).unwrap();
 
         let tasks_defs_file = test_dir.clone().join("tasks.json");
-        let tasks_defs = load_task_def_vec(&tasks_defs_file).unwrap();
+        let tasks_defs : Vec<TaskDef>= load_from(&tasks_defs_file).unwrap();
 
         // Two subtasks
         assert_eq!(tasks_defs.len(), 2);
@@ -246,7 +223,7 @@ mod test {
         split_step(&splitter2, &vec![test_dir.to_str().unwrap().to_owned()]).unwrap();
 
         let tasks_defs_file = test_dir.clone().join("tasks.json");
-        let tasks_defs = load_task_def_vec(&tasks_defs_file).unwrap();
+        let tasks_defs = load_from::<Vec<TaskDef>>(&tasks_defs_file).unwrap();
 
         // One subtask two elements
         assert_eq!(tasks_defs.len(), 1);
@@ -275,7 +252,7 @@ mod test {
         let tasks_defs_file = test_dir.clone().join("task1.json");
         let task_def = vec![TaskArg::Meta(serde_json::json!(5))];
 
-        save_task_def(&tasks_defs_file, &TaskDef(task_def));
+        save_to(&tasks_defs_file, &TaskDef(task_def));
 
         execute_step(
             &execute1,
