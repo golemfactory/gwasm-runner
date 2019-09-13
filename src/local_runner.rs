@@ -13,16 +13,38 @@ fn run_local_code(
     task_path: &Path,
     args: Vec<String>,
 ) -> Fallible<()> {
+    use std::path::{PathBuf, Component};
     let mut sandbox = Sandbox::new_on_engine(engine)?.set_exec_args(args)?;
 
     sandbox.init()?;
-    sandbox.mount("/", "@", NodeMode::Ro)?;
+
+    let mut base = PathBuf::from("/");
+    let mut cur_dir = std::env::current_dir()?;
+
+    //eprintln!("cd={}", cur_dir.display());
+
+
+    #[cfg(windows)]
+    {
+        let mut it = cur_dir.components();
+        let mut c = it.next();
+        while let Some(Component::Prefix(p)) = c {
+            base = PathBuf::from(p.as_os_str()).join("/");
+            c = it.next();
+        }
+
+        cur_dir = PathBuf::from("/hostfs").join(it.as_path());
+        sandbox.mount(base, "/hostfs", NodeMode::Rw)?;
+    }
+    #[cfg(unix)] {
+        sandbox.mount("/", "@", NodeMode::Rw)?;
+    }
+    //eprintln!("cd={} root={}", cur_dir.display(), base.display());
+
     sandbox.mount(task_path, "/task_dir", NodeMode::Rw)?;
 
-    let cur_dir = std::env::current_dir()?;
-
     sandbox
-        .work_dir(cur_dir.to_string_lossy().as_ref())?
+        .work_dir(cur_dir.to_string_lossy().replace("\\", "/").as_ref())?
         .run(js_path, wasm_path)?;
 
     Ok(())

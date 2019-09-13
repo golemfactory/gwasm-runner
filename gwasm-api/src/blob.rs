@@ -47,7 +47,7 @@ impl IntoTaskArg for Blob {
         let path = self.0.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
-            .map(|v| TaskArg::Blob(v.into()))
+            .map(|v| TaskArg::Blob(v.replace("\\", "/")))
     }
 }
 

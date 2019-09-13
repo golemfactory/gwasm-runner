@@ -15,7 +15,8 @@ members = [
 log="0.4"
 env_logger = "0.6"
 failure="0.1"
-sp-wasm-engine = { git = "https://github.com/golemfactory/sp-wasm", branch="wasm-runner" }
+#sp-wasm-engine = { git = "https://github.com/golemfactory/sp-wasm", branch="wasm-runner" }
+sp-wasm-engine = { path="../sp-wasm/sp-wasm-engine" }
 
 structopt = { version="0.2", features = ["wrap_help", "suggestions", "color"] }
 app_dirs = "1.2.1"

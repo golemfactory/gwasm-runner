@@ -57,7 +57,7 @@ impl TaskDef {
     }
 
     pub fn rebase_to(mut self, from_base: &Path, to_path: &Path) -> Result<Self, Error> {
-        let prefix = calc_rebase(from_base, to_path).display().to_string();
+        let prefix = calc_rebase(from_base, to_path).display().to_string().replace("\\", "/");
         for task_arg in &mut self.0 {
             task_arg.rebase_to(&prefix)?;
         }
