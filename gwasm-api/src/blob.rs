@@ -6,7 +6,7 @@ use std::fs;
 
 **/
 use std::io::{self, Read, Seek, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, Component};
 
 pub struct Blob(PathBuf);
 pub struct Output(pub(crate) PathBuf);
@@ -44,11 +44,33 @@ impl Output {
 
 impl IntoTaskArg for Blob {
     fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
-        let path = self.0.strip_prefix(base)?;
+        let cpath = em_canonicalize(&self.0)?;
+        let path = cpath.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
             .map(|v| TaskArg::Blob(v.replace("\\", "/")))
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn em_canonicalize(path : &Path) -> io::Result<PathBuf> {
+    let mut out_path = PathBuf::new();
+
+    for c in path.components() {
+        match c {
+            Component::ParentDir => { let _ = out_path.pop(); },
+            Component::Normal(v) => out_path.push(v),
+            Component::RootDir => out_path.push("/"),
+            _ => ()
+        }
+    }
+
+    Ok(out_path)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn em_canonicalize(path : &Path) -> io::Result<PathBuf> {
+    path.canonicalize()
 }
 
 impl FromTaskArg for Blob {

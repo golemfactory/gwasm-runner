@@ -5,6 +5,7 @@ use sp_wasm_engine::prelude::*;
 use sp_wasm_engine::sandbox::engine::EngineRef;
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::io::BufWriter;
 
 fn run_local_code(
     engine: EngineRef,
@@ -128,11 +129,12 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
                 task_input_path.join(blob_path),
             )?;
         }
-        serde_json::to_writer_pretty(
+        let task = task.rebase_output("", "../out/");
+        serde_json::to_writer_pretty(BufWriter::new(
             OpenOptions::new()
                 .create_new(true)
                 .write(true)
-                .open(task_input_path.join("task.json"))?,
+                .open(task_input_path.join("task.json"))?),
             &task,
         )?;
 
