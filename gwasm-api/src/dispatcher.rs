@@ -69,11 +69,12 @@ pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     args: &Vec<String>,
 ) -> Result<(), Error> {
     let params_path = PathBuf::from(args[0].clone());
+    let input_dir = params_path.parent().ok_or(ApiError::NoParent)?;
     let output_desc_path = PathBuf::from(args[1].clone());
     let output_dir = output_desc_path.parent().ok_or(ApiError::NoParent)?;
 
     let input_params = load_from(&params_path)?;
-    let output_desc = exec_for(&executor, input_params, &output_dir)?;
+    let output_desc = exec_for(&executor, input_params, &input_dir, &output_dir)?;
 
     save_to(&output_desc_path, &output_desc)
 }
