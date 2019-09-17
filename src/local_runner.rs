@@ -130,7 +130,6 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
             )?;
         }
         let task = task.rebase_output("", "../out/");
-        eprintln!("{:?}", task);
         serde_json::to_writer_pretty(BufWriter::new(
             OpenOptions::new()
                 .create_new(true)
