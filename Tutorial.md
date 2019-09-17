@@ -28,11 +28,27 @@ This tutorial will guide you through following steps:
 
 ## i. Install
 
+TODO: Links to install package downloads.
+
 ## ii. Clone & Build
+
+TODO: links and command lines to clone golem-unlimited repo and build the modules.
 
 ## iii. Start GU Hub
 
+`<commandline to start GU Hub>`
+
+URL of the UI Console:
+
+`http://localhost:61622/app/index.html`
+
 ## iv. Configure and Start GU Provider
+
+`<commandline to configure the Provider node>`
+
+`<commandline to start Provider node>`
+
+You should now be able to observe the new GU Provider appearing in the GU Hub UI Console.
 
 # 1. Setup Development Environment
 
