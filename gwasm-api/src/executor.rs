@@ -9,10 +9,11 @@ pub trait Executor<In: FromTaskDef, Out: IntoTaskDef> {
 pub(crate) fn exec_for<In: FromTaskDef, Out: IntoTaskDef, E: Executor<In, Out>>(
     executor: &E,
     task_input: TaskDef,
-    base_dir: &Path,
+    task_input_dir: &Path,
+    task_output_dir : &Path
 ) -> Result<TaskDef, Error> {
-    let input = In::from_task_def(task_input, base_dir)?;
-    executor.exec(input).into_task_def(base_dir)
+    let input = In::from_task_def(task_input, task_input_dir)?;
+    executor.exec(input).into_task_def(task_output_dir)
 }
 
 macro_rules! gen_bind {
@@ -54,11 +55,11 @@ mod test {
         let (v,) = Executor::exec(&inc_v, (0u32,));
 
         assert_eq!(v, 1);
-        let ret = exec_for(&inc_v, task, &PathBuf::from(".")).unwrap();
+        let ret = exec_for(&inc_v, task, &PathBuf::from("."), ".".as_ref()).unwrap();
         eprintln!("{}", serde_json::to_string(&ret).unwrap());
 
         let task: TaskDef = serde_json::from_str(r#"[{"meta": 10},{"meta": 15}]"#).unwrap();
-        let ret = exec_for(&add_me, task, &PathBuf::from(".")).unwrap();
+        let ret = exec_for(&add_me, task, &PathBuf::from("."), ".".as_ref()).unwrap();
         eprintln!("{}", serde_json::to_string(&ret).unwrap());
     }
 

@@ -44,7 +44,8 @@ impl Output {
 
 impl IntoTaskArg for Blob {
     fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
-        let path = self.0.strip_prefix(base)?;
+        let cpath = self.0.canonicalize()?;
+        let path = cpath.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
             .map(|v| TaskArg::Blob(v.replace("\\", "/")))
