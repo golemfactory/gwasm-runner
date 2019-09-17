@@ -1,10 +1,12 @@
-use crate::blob::Output;
+use crate::blob::{Blob, Output};
 use crate::error::Error;
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub trait SplitContext {
     fn new_blob(&mut self) -> Output;
+    fn new_blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error>;
 
     fn args(&self) -> &Vec<String>;
 }
@@ -44,6 +46,13 @@ impl SplitContext for WorkDirCtx {
                 return Output(output_path);
             }
         }
+    }
+
+    fn new_blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error> {
+        let output = self.new_blob();
+        output.open()?.write_all(bytes);
+
+        Ok(Blob::from_output(output))
     }
 
     fn args(&self) -> &Vec<String> {
