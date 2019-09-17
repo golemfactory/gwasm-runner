@@ -76,11 +76,11 @@ Observe the structure of the split() -> execute() -> merge() pattern which is le
 
 `gwasm-runner ./target/wasm32-unknown-emscripten/release/mandelbrot.wasm 10 10 10 10 10 10 2`
 
-5. Run Mandelbrot via gwasm-runner on GU cluster
+## 5. Run Mandelbrot via gwasm-runner on GU cluster
 
 `gwasm-runner ???`
 
-6. View results
+## 6. View results
 
 Observe the output file in the `mandelbrot` directory:
 
