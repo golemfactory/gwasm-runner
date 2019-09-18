@@ -66,11 +66,9 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 `docker pull prekucki/gwasm-tutoral`
 
-`docker run -it prekucki/gwasm-tutoral`
+`mkdir gwasm-tutorial-workspace`
 
-(or with option to mount a local file share)
-
-`docker run -it -v output:/root/output prekucki/gwasm-tutoral`
+`docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data prekucki/gwasm-tutoral`
 
 ## 2. View Mandelbrot
 
@@ -86,11 +84,11 @@ Observe the structure of the split() -> execute() -> merge() pattern which is le
 
 ## 3. Build Mandelbrot
 
-`cargo build --release --target wasm32-unknown-emscripten`
+`cargo rustc --target=wasm32-unknown-emscripten --release -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"`
 
 ## 4. Run Mandelbrot via gwasm-runner locally
 
-`gwasm-runner ./target/wasm32-unknown-emscripten/release/mandelbrot.wasm 10 10 10 10 10 10 2`
+`gwasm-runner ./target/wasm32-unknown-emscripten/release/mandelbrot.wasm 0.2 0.35 0.6 0.45 1000 1000 2`
 
 ## 5. Run Mandelbrot via gwasm-runner on GU cluster
 
@@ -104,6 +102,6 @@ Observe the output file in the `mandelbrot` directory:
 
 Now we need to move the output file (`out.png`) to the output directory which is shared with the host:
 
-`cp ./out.png ../host`
+`cp /root/mandelbrot/out.png /data/mandelbrot.png`
 
 At this point, the `out.png` file should be visible in host filesystem, and viewable with your preferred image viewer.
