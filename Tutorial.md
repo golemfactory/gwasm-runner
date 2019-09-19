@@ -70,7 +70,33 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 `docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data prekucki/gwasm-tutoral`
 
-## 2. View Mandelbrot
+## 2. Hello example
+### Code
+
+`cd ..\hello`
+
+`ls`
+
+`cd src`
+
+`vi hello.rs`
+
+Observe the structure of the split() -> execute() -> merge() pattern which is leveraged by gwasm-runner.
+
+### Build
+
+`cargo rustc --target=wasm32-unknown-emscripten --release -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"`
+
+### Run Hello via gwasm-runner locally
+
+`gwasm-runner ./target/wasm32-unknown-emscripten/release/hello.wasm`
+
+### Run Hello via gwasm-runner on GU cluster
+
+`gwasm-runner ???`
+
+## 3. Mandlebrot example
+### Code
 
 `cd ..\mandelbrot`
 
@@ -82,19 +108,19 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 Observe the structure of the split() -> execute() -> merge() pattern which is leveraged by gwasm-runner.
 
-## 3. Build Mandelbrot
+### Build
 
 `cargo rustc --target=wasm32-unknown-emscripten --release -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"`
 
-## 4. Run Mandelbrot via gwasm-runner locally
+### Run Mandelbrot via gwasm-runner locally
 
 `gwasm-runner ./target/wasm32-unknown-emscripten/release/mandelbrot.wasm 0.2 0.35 0.6 0.45 1000 1000 2`
 
-## 5. Run Mandelbrot via gwasm-runner on GU cluster
+### Run Mandelbrot via gwasm-runner on GU cluster
 
 `gwasm-runner ???`
 
-## 6. View results
+### View results
 
 Observe the output file in the `mandelbrot` directory:
 
