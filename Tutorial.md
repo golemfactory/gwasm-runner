@@ -85,7 +85,7 @@ Observe the structure of the split() -> execute() -> merge() pattern which is le
 
 ### Build
 
-`cargo rustc --target=wasm32-unknown-emscripten --release -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"`
+`cargo build --target=wasm32-unknown-emscripten --release`
 
 ### Run Hello via gwasm-runner locally
 
@@ -110,7 +110,7 @@ Observe the structure of the split() -> execute() -> merge() pattern which is le
 
 ### Build
 
-`cargo rustc --target=wasm32-unknown-emscripten --release -- -C link-args="-s ALLOW_MEMORY_GROWTH=1"`
+`cargo build --target=wasm32-unknown-emscripten --release`
 
 ### Run Mandelbrot via gwasm-runner locally
 
