@@ -7,7 +7,7 @@ use std::fs::OpenOptions;
 use std::path::Path;
 use std::io::BufWriter;
 
-fn run_local_code(
+pub fn run_local_code(
     engine: EngineRef,
     wasm_path: &Path,
     js_path: &Path,

@@ -6,9 +6,13 @@ use sp_wasm_engine::prelude::*;
 use structopt::*;
 
 mod local_runner;
+#[cfg(feature="with-gu-mode")]
+mod gu_runner;
+
 mod workdir;
 
 use local_runner::run_on_local;
+
 
 #[derive(Debug, Clone)]
 enum Backend {
@@ -86,6 +90,9 @@ fn main() -> failure::Fallible<()> {
 
     match opts.backend {
         Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
+        #[cfg(feature="with-gu-mode")]
+        Backend::GolemUnlimited => gu_runner::run(&opts.wasm_app, &opts.wasm_app_args),
+
         _ => unimplemented!(),
     }
 }
