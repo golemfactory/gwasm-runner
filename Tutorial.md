@@ -9,20 +9,10 @@ This tutorial will guide you through following steps:
    3. Start GU Hub
    4. Configure and Start GU Provider
 1. Setup Development Environment
-   1. Standalone
-      * Rust
-      * Emscripten      
-      * VCPKG (Windows)
-      * OpenSSL
-      * gwasm-runner
-      * Sample projects
-        * are they in one repo???
-   2. Docker-based
-2. View Mandelbrot
-3. Build Mandelbrot
-4. Run Mandelbrot via gwasm-runner locally
-5. Run Mandelbrot via gwasm-runner on GU cluster
-6. View results
+   1. Docker-based
+   2. Standalone
+2. Hello Example
+3. Mandelbrot Example
 
 # 0. Setup Golem Unlimited Cluster
 
@@ -73,13 +63,7 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 ## 2. Hello example
 ### Code
 
-`cd ..\hello`
-
-`ls`
-
-`cd src`
-
-`vi hello.rs`
+`vi \root\hello\src\hello.rs`
 
 Observe the structure of the split() -> execute() -> merge() pattern which is leveraged by gwasm-runner.
 
@@ -98,13 +82,7 @@ Observe the structure of the split() -> execute() -> merge() pattern which is le
 ## 3. Mandlebrot example
 ### Code
 
-`cd ..\mandelbrot`
-
-`ls`
-
-`cd src`
-
-`vi mandelbrot.rs`
+`vi \root\mandelbrot\src\mandelbrot.rs`
 
 Observe the structure of the split() -> execute() -> merge() pattern which is leveraged by gwasm-runner.
 
