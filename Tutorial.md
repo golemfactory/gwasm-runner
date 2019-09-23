@@ -11,8 +11,9 @@ This tutorial will guide you through following steps:
 1. Setup Development Environment
    1. Docker-based
    2. Standalone
-2. Hello Example
-3. Mandelbrot Example
+2. Hello example
+3. Mandelbrot example
+4. Other examples
 
 # 0. Setup Golem Unlimited Cluster
 
@@ -56,9 +57,18 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 `docker pull golemfactory/gwasm-tutorial`
 
+or, if using local Deocker Registry:
+
+`docker pull <registry IP>/golemfactory/gwasm-tutorial`
+
 `mkdir gwasm-tutorial-workspace`
 
 `docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data golemfactory/gwasm-tutorial`
+
+or
+
+`docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data <registry IP>/golemfactory/gwasm-tutorial`
+
 
 ## 2. Hello example
 ### Code
@@ -109,3 +119,10 @@ Now we need to move the output file (`out.png`) to the output directory which is
 `cp /root/mandelbrot/out.png /data/mandelbrot.png`
 
 At this point, the `out.png` file should be visible in host filesystem, and viewable with your preferred image viewer.
+
+## 4. Other examples
+
+In the developer's Image you can find other examples of gWasm projects:
+  - /hello - The Hello World example, presented in this tutorial,
+  - /mandelbrot - The Mandelbrot example, presented in this tutorial,
+  - /aes-cracker - A *very* interesting example, which includes a *prize* for those worthy explorers who are willing to join their forces and break the code... ;)
