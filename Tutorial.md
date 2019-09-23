@@ -54,11 +54,11 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 ## ii. Docker-based
 
-`docker pull prekucki/gwasm-tutoral`
+`docker pull golemfactory/gwasm-tutorial`
 
 `mkdir gwasm-tutorial-workspace`
 
-`docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data prekucki/gwasm-tutoral`
+`docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data golemfactory/gwasm-tutorial`
 
 ## 2. Hello example
 ### Code
