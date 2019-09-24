@@ -59,7 +59,7 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 or, if using local Deocker Registry:
 
-`docker pull <registry IP>/golemfactory/gwasm-tutorial`
+`docker pull docker.golem.network:5000/golemfactory/gwasm-tutorial`
 
 `mkdir gwasm-tutorial-workspace`
 
@@ -67,7 +67,7 @@ or, if using local Deocker Registry:
 
 or
 
-`docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data <registry IP>/golemfactory/gwasm-tutorial`
+`docker run -it -v $(pwd)/gwasm-tutorial-workspace:/data docker.golem.network:5000/golemfactory/gwasm-tutorial`
 
 
 ## 2. Hello example
