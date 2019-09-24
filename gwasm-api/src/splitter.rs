@@ -1,10 +1,13 @@
-use crate::blob::Output;
+use crate::blob::{Output, Blob};
 use crate::error::Error;
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
 use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::io::{Read, Write};
 
 pub trait SplitContext {
     fn new_blob(&mut self) -> Output;
+    fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error>;
 
     fn args(&self) -> &Vec<String>;
 }
@@ -44,6 +47,16 @@ impl SplitContext for WorkDirCtx {
                 return Output(output_path);
             }
         }
+    }
+
+    fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error> {
+        let mut dict_file = File::open(path)?;
+        let mut data = Vec::new();
+        dict_file.read_to_end(&mut data);
+
+        let output = self.new_blob();
+        output.open()?.write(data.as_slice());
+        Ok(Blob::from_output(output))
     }
 
     fn args(&self) -> &Vec<String> {
