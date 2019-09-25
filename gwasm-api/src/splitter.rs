@@ -1,9 +1,9 @@
-use crate::blob::{Output, Blob};
+use crate::blob::{Blob, Output};
 use crate::error::Error;
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
-use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 
 pub trait SplitContext {
     fn new_blob(&mut self) -> Output;

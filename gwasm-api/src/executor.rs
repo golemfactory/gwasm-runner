@@ -10,7 +10,7 @@ pub(crate) fn exec_for<In: FromTaskDef, Out: IntoTaskDef, E: Executor<In, Out>>(
     executor: &E,
     task_input: TaskDef,
     task_input_dir: &Path,
-    task_output_dir : &Path
+    task_output_dir: &Path,
 ) -> Result<TaskDef, Error> {
     let input = In::from_task_def(task_input, task_input_dir)?;
     executor.exec(input).into_task_def(task_output_dir)

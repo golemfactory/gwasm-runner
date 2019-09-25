@@ -1,10 +1,9 @@
+use failure::Error;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use std::fs;
-use failure::{Error};
 
 use std::env;
-
 
 fn get_runner_binary_path() -> PathBuf {
     return PathBuf::from("target/release/gwasm-runner");
@@ -42,9 +41,7 @@ pub fn run(binary: &Path, execute_dir: &Path, args: Vec<String>) -> Result<Outpu
     let mut cmd_args = vec![String::from("--"), binary_abs.to_str().unwrap().to_owned()];
     cmd_args.append(&mut args.clone());
 
-    let result = Command::new(runner_abs)
-        .args(&cmd_args)
-        .output();
+    let result = Command::new(runner_abs).args(&cmd_args).output();
 
     env::set_current_dir(&working_dir)?;
 

@@ -4,9 +4,10 @@ use gwasm_api::TaskDef;
 use sp_wasm_engine::prelude::*;
 use sp_wasm_engine::sandbox::engine::EngineRef;
 use std::fs::OpenOptions;
-use std::path::Path;
 use std::io::BufWriter;
+use std::path::Path;
 
+#[allow(unused_mut, unused_variables)]
 pub fn run_local_code(
     engine: EngineRef,
     wasm_path: &Path,
@@ -14,7 +15,7 @@ pub fn run_local_code(
     task_path: &Path,
     args: Vec<String>,
 ) -> Fallible<()> {
-    use std::path::{PathBuf, Component};
+    use std::path::{Component, PathBuf};
     let mut sandbox = Sandbox::new_on_engine(engine)?.set_exec_args(args)?;
 
     sandbox.init()?;
@@ -23,7 +24,6 @@ pub fn run_local_code(
     let mut cur_dir = std::env::current_dir()?;
 
     //eprintln!("cd={}", cur_dir.display());
-
 
     #[cfg(windows)]
     {
@@ -37,7 +37,8 @@ pub fn run_local_code(
         cur_dir = PathBuf::from("/hostfs").join(it.as_path());
         sandbox.mount(base, "/hostfs", NodeMode::Rw)?;
     }
-    #[cfg(unix)] {
+    #[cfg(unix)]
+    {
         sandbox.mount("/", "@", NodeMode::Rw)?;
     }
     //eprintln!("cd={} root={}", cur_dir.display(), base.display());
@@ -130,11 +131,13 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
             )?;
         }
         let task = task.rebase_output("", "../out/");
-        serde_json::to_writer_pretty(BufWriter::new(
-            OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(task_input_path.join("task.json"))?),
+        serde_json::to_writer_pretty(
+            BufWriter::new(
+                OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .open(task_input_path.join("task.json"))?,
+            ),
             &task,
         )?;
 

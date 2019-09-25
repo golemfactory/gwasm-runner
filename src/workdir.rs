@@ -9,7 +9,6 @@ const APP_INFO: AppInfo = AppInfo {
 };
 
 pub struct WorkDir {
-    task_type: &'static str,
     base: PathBuf,
 }
 
@@ -18,7 +17,7 @@ impl WorkDir {
         let uuid = uuid::Uuid::new_v4();
         let base =
             app_dir(UserCache, &APP_INFO, task_type)?.join(uuid.to_hyphenated_ref().to_string());
-        Ok(WorkDir { base, task_type })
+        Ok(WorkDir { base })
     }
 
     pub fn split_output(&mut self) -> Fallible<PathBuf> {
