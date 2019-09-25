@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 
 pub trait SplitContext {
     fn new_blob(&mut self) -> Output;
+
     fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error>;
+
+    fn new_blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error>;
 
     fn args(&self) -> &Vec<String>;
 }
@@ -55,7 +58,14 @@ impl SplitContext for WorkDirCtx {
         dict_file.read_to_end(&mut data);
 
         let output = self.new_blob();
-        output.open()?.write(data.as_slice());
+        output.open()?.write_all(data.as_slice())?;
+        Ok(Blob::from_output(output))
+    }
+
+    fn new_blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error> {
+        let output = self.new_blob();
+        output.open()?.write_all(bytes)?;
+
         Ok(Blob::from_output(output))
     }
 
