@@ -1,6 +1,6 @@
 [package]
 name = "gwasm-runner"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Golem Factory <contact@golem.network>"]
 edition = "2018"
 description = "Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem."
