@@ -61,7 +61,7 @@ You should now be able to observe the new GU Provider appearing in the GU Hub UI
 
 `docker pull golemfactory/gwasm-tutorial`
 
-or, if using local Deocker Registry:
+or, if using local Docker Registry:
 
 `docker pull docker.golem.network:5000/golemfactory/gwasm-tutorial`
 
