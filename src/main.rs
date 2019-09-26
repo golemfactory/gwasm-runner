@@ -5,9 +5,12 @@ use failure::ResultExt;
 use sp_wasm_engine::prelude::*;
 use structopt::*;
 
+mod brass_runner;
 mod local_runner;
+mod task;
 mod workdir;
 
+use brass_runner::run_on_brass;
 use local_runner::run_on_local;
 
 #[derive(Debug, Clone)]
@@ -85,6 +88,7 @@ fn main() -> failure::Fallible<()> {
     );
 
     match opts.backend {
+        Backend::BrassGolem => run_on_brass(&opts.wasm_app, &opts.wasm_app_args),
         Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
         _ => unimplemented!(),
     }
