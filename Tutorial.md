@@ -10,24 +10,42 @@ tutorial, so you can either follow it with us on the big screen, or feel free to
 to do it yourself following this written tutorial.
 
 # Table of Contents
-- [0. Setup Golem Unlimited cluster](#0.-setup-golem-unlimited-cluster)
-  - [i. Install](#i.-install)
-  - [ii. Clone & Build](#ii.-clone-%26-build)
-  - [iii. Start GU Hub](#iii.-start-gu-hub)
-  - [iv. Configure and Start GU Provider](#iv.-configure-and-start-gu-provider)
-- [1. Setup Development Environment](#1.-setup-development-environment)
-  - [i. Docker-based](#i.-docker-based)
-  - [ii. Standalone](#ii.-standalone)
-    - [a. Emscripten SDK](#a.-emscripten-sdk)
-    - [b. Rust](#b.-rust)
-    - [c. OpenSSL and other dependencies](#c.-openssl-and-other-dependencies)
-    - [d. gwasm-runner](#d.-gwasm-runner)
-- [2. Hello World! example](#2.-hello-world!-example)
-  - [i. The gWasm runner API](#i.-the-gwasm-runner-api)
-  - [ii. Build](#ii.-build)
-  - [iii. Run!](#iii.-run!)
-- [3. Mandelbrot example](#3.-mandelbrot-example)
-- [4. Other examples](#4.-other-examples)
+- [GWasm Runner Tutorial](#gwasm-runner-tutorial)
+- [Table of Contents](#table-of-contents)
+- [0. Setup Golem Unlimited Cluster](#0-setup-golem-unlimited-cluster)
+  - [i. Install](#i-install)
+  - [ii. Clone & Build](#ii-clone--build)
+  - [iii. Start GU Hub](#iii-start-gu-hub)
+  - [iv. Configure and Start GU Provider](#iv-configure-and-start-gu-provider)
+- [1. Setup Development Environment](#1-setup-development-environment)
+  - [i. Docker-based](#i-docker-based)
+  - [ii. Standalone](#ii-standalone)
+    - [a. Emscripten SDK](#a-emscripten-sdk)
+    - [b. Rust](#b-rust)
+      - [Getting rustup](#getting-rustup)
+      - [Installing wasm32 target](#installing-wasm32-target)
+    - [c. OpenSSL and other dependencies](#c-openssl-and-other-dependencies)
+      - [Ubuntu](#ubuntu)
+      - [MacOS](#macos)
+      - [Windows 10](#windows-10)
+    - [d. gwasm-runner](#d-gwasm-runner)
+  - [2. Hello World! example](#2-hello-world-example)
+    - [i. The gWasm runner API](#i-the-gwasm-runner-api)
+      - [Split](#split)
+      - [Exec](#exec)
+      - [Merge](#merge)
+      - [Final result](#final-result)
+    - [ii. Build](#ii-build)
+    - [iii. Run!](#iii-run)
+      - [Run locally](#run-locally)
+      - [Run on the GU cluster](#run-on-the-gu-cluster)
+  - [3. Mandelbrot example](#3-mandelbrot-example)
+    - [Code](#code)
+    - [Build](#build)
+    - [Run Mandelbrot via gwasm-runner locally](#run-mandelbrot-via-gwasm-runner-locally)
+    - [Run Mandelbrot via gwasm-runner on GU cluster](#run-mandelbrot-via-gwasm-runner-on-gu-cluster)
+    - [View results](#view-results)
+  - [4. Other examples](#4-other-examples)
 
 # 0. Setup Golem Unlimited Cluster
 
@@ -37,8 +55,10 @@ TODO: Links to install package downloads.
 
 ## ii. Clone & Build
 
-TODO: links and command lines to clone golem-unlimited repo and build the modules.
+Follow the Readme in [Golem Unlimited GitHub repo] to clone and build GU components.
 
+[Golem Unlimited GitHub repo]: https://github.com/golemfactory/golem-unlimited
+ 
 ## iii. Start GU Hub
 
 To run the hub from source, in the `golem-unlimited` folder structure please go to the `gu-hub` subdir and perform:
