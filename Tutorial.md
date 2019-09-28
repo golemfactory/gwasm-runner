@@ -41,7 +41,10 @@ TODO: links and command lines to clone golem-unlimited repo and build the module
 
 ## iii. Start GU Hub
 
-`<commandline to start GU Hub>`
+To run the hub from source, in the `golem-unlimited` folder structure please go to the `gu-hub` subdir and perform:
+```
+$ cargo run -- -vv server run
+```
 
 URL of the UI Console:
 
