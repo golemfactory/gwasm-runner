@@ -12,7 +12,10 @@ pub(crate) fn exec_for<In: FromTaskDef, Out: IntoTaskDef, E: Executor<In, Out>>(
     task_input_dir: &Path,
     task_output_dir: &Path,
 ) -> Result<TaskDef, Error> {
-    let input = In::from_task_def(task_input, task_input_dir)?;
+    let in_dir_str = task_input_dir.display().to_string();
+    let out_dir_str = format!("{}/", task_output_dir.display());
+
+    let input = In::from_task_def(task_input.rebase_output(&in_dir_str, &out_dir_str), task_input_dir)?;
     executor.exec(input).into_task_def(task_output_dir)
 }
 
