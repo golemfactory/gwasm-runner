@@ -41,6 +41,16 @@ impl TaskDef {
         })
     }
 
+    pub fn outputs(&self) -> impl IntoIterator<Item = &str> {
+        self.0.iter().filter_map(move |b| {
+            if let TaskArg::Output(path) = b {
+                Some(path.as_ref())
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn rebase_output(mut self, from_base: &str, to_base: &str) -> Self {
         for arg in &mut self.0 {
             if let TaskArg::Output(ref mut output_path) = arg {
@@ -57,7 +67,10 @@ impl TaskDef {
     }
 
     pub fn rebase_to(mut self, from_base: &Path, to_path: &Path) -> Result<Self, Error> {
-        let prefix = calc_rebase(from_base, to_path).display().to_string().replace("\\", "/");
+        let prefix = calc_rebase(from_base, to_path)
+            .display()
+            .to_string()
+            .replace("\\", "/");
         for task_arg in &mut self.0 {
             task_arg.rebase_to(&prefix)?;
         }

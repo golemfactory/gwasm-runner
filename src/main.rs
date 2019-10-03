@@ -6,8 +6,11 @@ use sp_wasm_engine::prelude::*;
 use structopt::*;
 
 mod brass_runner;
+#[cfg(feature = "with-gu-mode")]
+mod gu_runner;
 mod local_runner;
 mod task;
+
 mod workdir;
 
 use brass_runner::run_on_brass;
@@ -16,7 +19,7 @@ use local_runner::run_on_local;
 #[derive(Debug, Clone)]
 enum Backend {
     Local,
-    GolemUnlimited,
+    GolemUnlimited(String),
     BrassGolem,
 }
 
@@ -24,9 +27,20 @@ impl FromStr for Backend {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Backend, String> {
+        if s.starts_with("gu://") {
+            let tail = &s[5..];
+            if !tail.contains(":") {
+                return Ok(Backend::GolemUnlimited(format!("{}:61622", tail)));
+            } else {
+                return Ok(Backend::GolemUnlimited(tail.to_string()));
+            }
+        }
+
         match s {
             "L" | "Local" | "local" => Ok(Backend::Local),
-            "GU" | "Unlimited" | "GolemUnlimited" => Ok(Backend::GolemUnlimited),
+            "GU" | "Unlimited" | "GolemUnlimited" => Ok(Backend::GolemUnlimited(
+                std::env::var("GU_HUB_ADDR").map_err(|e| e.to_string())?,
+            )),
             "Golem" | "Brass" | "BrassGolem" | "GolemBrass" => Ok(Backend::BrassGolem),
             x => Err(format!("{} is not a valid Backend", x)),
         }
@@ -90,6 +104,9 @@ fn main() -> failure::Fallible<()> {
     match opts.backend {
         Backend::BrassGolem => run_on_brass(&opts.wasm_app, &opts.wasm_app_args),
         Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
+        #[cfg(feature = "with-gu-mode")]
+        Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
+
         _ => unimplemented!(),
     }
 }
