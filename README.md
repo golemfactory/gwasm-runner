@@ -1,6 +1,10 @@
 # gwasm-runner
 Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem.
 
+It introduces simplistic API that resembles map-reduce paradigm. 
+
+This API enables developers to easily implement simple applications and run them on top of the Golem Unlimited and also on [Brass Golem 0.21 and later](https://blog.golemproject.net/brass-golem-beta-0-21-0-hello-mainnet-gwasm/).
+
 ## building on macos
 
 You need to have C compiler. Try
