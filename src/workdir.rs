@@ -8,6 +8,7 @@ const APP_INFO: AppInfo = AppInfo {
     author: "Golem Factory",
 };
 
+#[derive(Debug, Clone)]
 pub struct WorkDir {
     base: PathBuf,
 }
@@ -18,6 +19,10 @@ impl WorkDir {
         let base =
             app_dir(UserCache, &APP_INFO, task_type)?.join(uuid.to_hyphenated_ref().to_string());
         Ok(WorkDir { base })
+    }
+
+    pub fn base_dir(&self) -> &PathBuf {
+        &self.base
     }
 
     pub fn split_output(&mut self) -> Fallible<PathBuf> {
