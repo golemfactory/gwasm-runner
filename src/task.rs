@@ -1,6 +1,7 @@
 use {
     crate::workdir::WorkDir,
     failure::Fallible,
+    gwasm_api::{TaskArg, TaskDef},
     gwasm_brass_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
     std::{
         fs::{self, OpenOptions},
@@ -79,9 +80,12 @@ impl<'a> TaskBuilder<'a> {
         fs::write(&base_input_dir.join(&options.wasm_name()), self.binary.wasm)?;
 
         let split_dir = self.workdir.split_output()?;
+        let merge_dir = self.workdir.merge_path()?;
         let tasks_path = split_dir.join("tasks.json");
         let tasks: Vec<gwasm_api::TaskDef> =
             serde_json::from_reader(OpenOptions::new().read(true).open(tasks_path)?)?;
+
+        let mut input_agg = Vec::new();
 
         // Create subtask directories and definitions
         for task in tasks {
@@ -136,7 +140,18 @@ impl<'a> TaskBuilder<'a> {
                     .to_string(),
                 subtask,
             );
+
+            let task = task.rebase_output("", "../");
+            input_agg.push(task.rebase_to(&subtask_input_path, &merge_dir)?);
         }
+
+        serde_json::to_writer_pretty(
+            OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(merge_dir.join("tasks_input.json"))?,
+            &input_agg,
+        )?;
 
         Ok(Task::new(name, bid, timeout, subtask_timeout, options))
     }
