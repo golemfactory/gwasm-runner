@@ -1,5 +1,6 @@
 use {
-    crate::{local_runner::run_local_code, task::TaskBuilder, workdir::WorkDir},
+    crate::{local_runner::run_local_code, task::TaskBuilder, workdir::{GWASM_APP_INFO, WorkDir}},
+    app_dirs::{app_dir, AppDataType, AppInfo},
     failure::Fallible,
     gwasm_api::TaskDef,
     gwasm_brass_api::prelude::{
@@ -9,11 +10,13 @@ use {
         Net,
         ProgressUpdate
     },
+    serde::{Deserialize, Serialize},
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
     std::{
         fs::{File, OpenOptions},
         io::Read,
         path::{Path, PathBuf},
+        str::FromStr,
     },
 };
 
@@ -26,19 +29,63 @@ impl ProgressUpdate for ProgressTracker {
 }
 
 const TASK_TYPE: &str = "brass";
+pub const GOLEM_APP_INFO: AppInfo = AppInfo {
+    name: "golem",
+    author: "Golem Factory",
+};
+
 
 struct RunnerContext {
     engine_ref: EngineRef,
+    golem_config: GolemConfig,
     js_path: PathBuf,
     wasm_path: PathBuf,
     workdir: WorkDir,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct GolemConfig {
+    address: String,
+    bid: f64,
+    data_dir: PathBuf,
+    name: String,
+    net: String,
+}
+
+impl GolemConfig {
+    fn from(config_path: PathBuf) -> Fallible<GolemConfig> {
+        if config_path.exists() {
+            let parsed: GolemConfig = serde_json::from_reader(
+                OpenOptions::new()
+                    .read(true)
+                    .open(config_path)?
+            )?;
+
+            return Ok(parsed);
+        }
+
+        Ok(GolemConfig::default())
+    }
+}
+
+impl Default for GolemConfig {
+    fn default() -> GolemConfig {
+        GolemConfig {
+            address: String::from("127.0.0.1:61000"),
+            bid: 1.0,
+            data_dir: app_dir(AppDataType::UserData, &GOLEM_APP_INFO, "default").unwrap(),
+            name: String::from("gwasm-task"),
+            net: String::from("rinkeby"),
+        }
+    }
+}
+
 pub fn run_on_brass(wasm_path: &PathBuf, args: &[String]) -> Fallible<()> {
     let mut context = RunnerContext {
         engine_ref: Sandbox::init_ejs()?,
-        wasm_path: wasm_path.to_path_buf(),
+        golem_config: GolemConfig::from(app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"))?,
         js_path: wasm_path.with_extension("js"),
+        wasm_path: wasm_path.to_path_buf(),
         workdir: WorkDir::new(TASK_TYPE)?,
     };
 
@@ -79,11 +126,12 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
     let builder = TaskBuilder::new(context.workdir.clone(), binary);
     let task = builder.build()?;
 
+    let address_parts: Vec<&str> = context.golem_config.address.split(":").collect();
     let computed_task = compute(
         Path::new("/home/kuba/golem-files/datadirs/gwasm-brass-runner/requestor"),
-        "127.0.0.1",
-        61000,
-        Net::TestNet,
+        address_parts[0],
+        address_parts[1].parse()?,
+        Net::from_str(context.golem_config.net.as_str())?,
         task,
         ProgressTracker,
     ).map_err(|e| format!("Task computation failed: {}", e)).unwrap();
