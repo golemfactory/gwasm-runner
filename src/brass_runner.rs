@@ -8,6 +8,7 @@ use {
     failure::Fallible,
     gwasm_api::TaskDef,
     gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, Net, ProgressUpdate},
+    indicatif::ProgressBar,
     serde::{Deserialize, Serialize},
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
     std::{
@@ -18,19 +19,46 @@ use {
     },
 };
 
-struct ProgressTracker;
-
-impl ProgressUpdate for ProgressTracker {
-    fn update(&mut self, progress: f64) {
-        println!("Current progress = {}", progress);
-    }
-}
-
 const TASK_TYPE: &str = "brass";
 pub const GOLEM_APP_INFO: AppInfo = AppInfo {
     name: "golem",
     author: "Golem Factory",
 };
+
+struct ProgressUpdater {
+    bar: ProgressBar,
+    progress: f64,
+    num_subtasks: u64,
+}
+
+impl ProgressUpdater {
+    fn new(num_subtasks: u64) -> Self {
+        Self {
+            bar: ProgressBar::new(num_subtasks),
+            progress: 0.0,
+            num_subtasks,
+        }
+    }
+}
+
+impl ProgressUpdate for ProgressUpdater {
+    fn update(&mut self, progress: f64) {
+        if progress > self.progress {
+            let delta = progress - self.progress;
+            self.progress = progress;
+            self.bar
+                .inc((delta * self.num_subtasks as f64).round() as u64);
+        }
+    }
+
+    fn start(&mut self) {
+        self.bar.inc(0)
+    }
+
+    fn stop(&mut self) {
+        self.bar.finish_and_clear()
+    }
+}
 
 struct RunnerContext {
     engine_ref: EngineRef,
@@ -129,6 +157,8 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
 
     log::debug!("Created task: {:#?}", task);
 
+    log::info!("Starting task computation...");
+    let subtask_count = task.options().subtasks().count();
     let address_parts: Vec<&str> = context.golem_config.address.split(":").collect();
     let computed_task = compute(
         &context.golem_config.data_dir,
@@ -136,7 +166,7 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
         address_parts[1].parse()?,
         Net::from_str(context.golem_config.net.as_str())?,
         task,
-        ProgressTracker,
+        ProgressUpdater::new(subtask_count as u64),
     )
     .map_err(|e| log::error!("Task computation failed: {}", e))
     .unwrap();
