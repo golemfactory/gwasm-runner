@@ -1,29 +1,24 @@
 use {
     crate::{
-        local_runner::run_local_code,
+        brass_config::GolemConfig,
         brass_task::TaskBuilder,
+        local_runner::run_local_code,
         workdir::{WorkDir, GWASM_APP_INFO},
     },
-    app_dirs::{app_dir, AppDataType, AppInfo},
+    app_dirs::{app_dir, AppDataType},
     failure::Fallible,
     gwasm_api::TaskDef,
-    gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, Net, ProgressUpdate},
+    gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     indicatif::ProgressBar,
-    serde::{Deserialize, Serialize},
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
     std::{
         fs::{File, OpenOptions},
         io::Read,
-        path::{Path, PathBuf},
-        str::FromStr,
+        path::PathBuf,
     },
 };
 
 const TASK_TYPE: &str = "brass";
-pub const GOLEM_APP_INFO: AppInfo = AppInfo {
-    name: "golem",
-    author: "Golem Factory",
-};
 
 struct ProgressUpdater {
     bar: ProgressBar,
@@ -68,40 +63,10 @@ struct RunnerContext {
     workdir: WorkDir,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct GolemConfig {
-    address: String,
-    bid: f64,
-    data_dir: PathBuf,
-    name: String,
-    net: String,
-}
-
-impl GolemConfig {
-    fn from(config_path: PathBuf) -> Fallible<GolemConfig> {
-        if config_path.exists() {
-            let user_config: GolemConfig = serde_json::from_reader(File::open(config_path)?)?;
-            return Ok(user_config);
-        }
-        Ok(GolemConfig::default())
-    }
-}
-
-impl Default for GolemConfig {
-    fn default() -> GolemConfig {
-        GolemConfig {
-            address: String::from("127.0.0.1:61000"),
-            bid: 1.0,
-            data_dir: app_dir(AppDataType::UserData, &GOLEM_APP_INFO, "default").unwrap(),
-            name: String::from("gwasm-task"),
-            net: String::from("testnet"),
-        }
-    }
-}
-
 pub fn run_on_brass(wasm_path: &PathBuf, args: &[String]) -> Fallible<()> {
     let golem_config = GolemConfig::from(
-        app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"))?;
+        app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"),
+    )?;
     let workdir = WorkDir::new(TASK_TYPE)?;
 
     log::info!("Working directory: {}", workdir.base_dir().display());
@@ -152,7 +117,11 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
         wasm: wasm_file.as_slice(),
     };
 
-    let builder = TaskBuilder::new(context.workdir.clone(), binary);
+    let builder = TaskBuilder::new(context.workdir.clone(), binary)
+        .name(&context.golem_config.name)
+        .bid(context.golem_config.bid)
+        .timeout(context.golem_config.task_timeout)
+        .subtask_timeout(context.golem_config.subtask_timeout);
     let task = builder.build()?;
 
     log::debug!("Created task: {:#?}", task);
@@ -164,7 +133,7 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
         &context.golem_config.data_dir,
         address_parts[0],
         address_parts[1].parse()?,
-        Net::from_str(context.golem_config.net.as_str())?,
+        context.golem_config.net.clone(),
         task,
         ProgressUpdater::new(subtask_count as u64),
     )

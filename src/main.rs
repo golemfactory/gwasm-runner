@@ -5,6 +5,7 @@ use failure::ResultExt;
 use sp_wasm_engine::prelude::*;
 use structopt::*;
 
+mod brass_config;
 mod brass_runner;
 mod brass_task;
 #[cfg(feature = "with-gu-mode")]
