@@ -95,8 +95,8 @@ fn main() -> failure::Fallible<()> {
 
     env_logger::init_from_env(
         env_logger::Env::default().default_filter_or(match opts.verbose {
-            0 => "error",
-            1 => "info",
+            0 => "info",
+            1 => "debug",
             _ => "sp_wasm_engine=debug,info",
         }),
     );

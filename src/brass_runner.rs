@@ -72,19 +72,26 @@ impl Default for GolemConfig {
 }
 
 pub fn run_on_brass(wasm_path: &PathBuf, args: &[String]) -> Fallible<()> {
+    let golem_config = GolemConfig::from(
+        app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"))?;
+    let workdir = WorkDir::new(TASK_TYPE)?;
+
+    log::info!("Working directory: {}", workdir.base_dir().display());
+    log::info!("Using {:#?}", golem_config);
+
     let mut context = RunnerContext {
         engine_ref: Sandbox::init_ejs()?,
-        golem_config: GolemConfig::from(
-            app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"),
-        )?,
+        golem_config,
         js_path: wasm_path.with_extension("js"),
         wasm_path: wasm_path.to_path_buf(),
-        workdir: WorkDir::new(TASK_TYPE)?,
+        workdir,
     };
 
-    split(args, &mut context);
+    split(args, &mut context)?;
     let computed_task = execute(&mut context)?;
-    merge(args, &mut context, computed_task);
+    merge(args, &mut context, computed_task)?;
+
+    log::info!("Task computed!");
 
     Ok(())
 }
@@ -95,7 +102,8 @@ fn split(args: &[String], context: &mut RunnerContext) -> Fallible<()> {
     split_args.push("split".to_owned());
     split_args.push("/task_dir/".to_owned());
     split_args.extend(args.iter().cloned());
-    eprintln!("work dir: {}", output_path.display());
+
+    log::debug!("split args: {:?}", split_args);
 
     run_local_code(
         context.engine_ref.clone(),
@@ -119,17 +127,21 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
     let builder = TaskBuilder::new(context.workdir.clone(), binary);
     let task = builder.build()?;
 
+    log::debug!("Created task: {:#?}", task);
+
     let address_parts: Vec<&str> = context.golem_config.address.split(":").collect();
     let computed_task = compute(
-        Path::new("/home/kuba/golem-files/datadirs/gwasm-brass-runner/requestor"),
+        &context.golem_config.data_dir,
         address_parts[0],
         address_parts[1].parse()?,
         Net::from_str(context.golem_config.net.as_str())?,
         task,
         ProgressTracker,
     )
-    .map_err(|e| format!("Task computation failed: {}", e))
+    .map_err(|e| log::error!("Task computation failed: {}", e))
     .unwrap();
+
+    log::debug!("Computed task: {:#?}", computed_task);
 
     Ok(computed_task)
 }
@@ -140,6 +152,8 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
 
     for subtask in task.subtasks.into_iter() {
         let output_path = context.workdir.base_dir().join(subtask.name);
+        log::debug!("Reading output for subtask: {}", output_path.display());
+
         for (path, reader) in subtask.data.into_iter() {
             if path.ends_with("task.json") {
                 let output_data: TaskDef = serde_json::from_reader(reader)?;
@@ -147,6 +161,8 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
             }
         }
     }
+
+    log::debug!("output_agg: {:?}", output_agg);
 
     serde_json::to_writer_pretty(
         OpenOptions::new()
@@ -162,6 +178,8 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
     merge_args.push("/task_dir/merge/tasks_output.json".to_owned());
     merge_args.push("--".to_owned());
     merge_args.extend(args.iter().cloned());
+
+    log::debug!("merge args: {:?}", merge_args);
 
     run_local_code(
         context.engine_ref.clone(),

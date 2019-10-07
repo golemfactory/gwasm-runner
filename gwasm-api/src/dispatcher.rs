@@ -75,12 +75,10 @@ pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     let params_path = PathBuf::from(args[0].clone());
     let input_dir = params_path.parent().ok_or(ApiError::NoParent)?;
     let output_desc_path = PathBuf::from(args[1].clone());
-    println!("output_desc_path: {:?}", output_desc_path);
     let output_dir = output_desc_path.parent().ok_or(ApiError::NoParent)?;
 
     let input_params = load_from(&params_path)?;
     let output_desc = exec_for(&executor, input_params, &input_dir, &output_dir)?;
-    println!("output_desc: {:?}", output_desc);
 
     save_to(&output_desc_path, &output_desc)
 }
@@ -130,7 +128,6 @@ pub fn run<
     merger: M,
 ) -> Result<(), Error> {
     let mut args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
     // TODO: check param len
     let command = args[1].clone();
 
