@@ -6,10 +6,10 @@ use sp_wasm_engine::prelude::*;
 use structopt::*;
 
 mod brass_runner;
+mod brass_task;
 #[cfg(feature = "with-gu-mode")]
 mod gu_runner;
 mod local_runner;
-mod task;
 
 mod workdir;
 

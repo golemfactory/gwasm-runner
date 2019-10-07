@@ -1,7 +1,7 @@
 use {
     crate::{
         local_runner::run_local_code,
-        task::TaskBuilder,
+        brass_task::TaskBuilder,
         workdir::{WorkDir, GWASM_APP_INFO},
     },
     app_dirs::{app_dir, AppDataType, AppInfo},
