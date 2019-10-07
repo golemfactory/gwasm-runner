@@ -3,11 +3,12 @@ use failure::Fallible;
 use std::fs;
 use std::path::PathBuf;
 
-const APP_INFO: AppInfo = AppInfo {
+pub const GWASM_APP_INFO: AppInfo = AppInfo {
     name: "g-wasm-runner",
     author: "Golem Factory",
 };
 
+#[derive(Debug, Clone)]
 pub struct WorkDir {
     base: PathBuf,
 }
@@ -15,9 +16,13 @@ pub struct WorkDir {
 impl WorkDir {
     pub fn new(task_type: &'static str) -> Fallible<Self> {
         let uuid = uuid::Uuid::new_v4();
-        let base =
-            app_dir(UserCache, &APP_INFO, task_type)?.join(uuid.to_hyphenated_ref().to_string());
+        let base = app_dir(UserCache, &GWASM_APP_INFO, task_type)?
+            .join(uuid.to_hyphenated_ref().to_string());
         Ok(WorkDir { base })
+    }
+
+    pub fn base_dir(&self) -> &PathBuf {
+        &self.base
     }
 
     pub fn split_output(&mut self) -> Fallible<PathBuf> {
@@ -50,7 +55,9 @@ mod test {
     fn test_app_dir() {
         eprintln!(
             "dir={}",
-            app_dir(UserCache, &APP_INFO, "/local").unwrap().display()
+            app_dir(UserCache, &GWASM_APP_INFO, "/local")
+                .unwrap()
+                .display()
         )
     }
 

@@ -5,12 +5,16 @@ use failure::ResultExt;
 use sp_wasm_engine::prelude::*;
 use structopt::*;
 
+mod brass_config;
+mod brass_runner;
+mod brass_task;
 #[cfg(feature = "with-gu-mode")]
 mod gu_runner;
 mod local_runner;
 
 mod workdir;
 
+use brass_runner::run_on_brass;
 use local_runner::run_on_local;
 
 #[derive(Debug, Clone)]
@@ -92,13 +96,14 @@ fn main() -> failure::Fallible<()> {
 
     env_logger::init_from_env(
         env_logger::Env::default().default_filter_or(match opts.verbose {
-            0 => "error",
-            1 => "info",
+            0 => "info",
+            1 => "debug",
             _ => "sp_wasm_engine=debug,info",
         }),
     );
 
     match opts.backend {
+        Backend::BrassGolem => run_on_brass(&opts.wasm_app, &opts.wasm_app_args),
         Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
