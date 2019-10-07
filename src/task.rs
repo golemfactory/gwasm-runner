@@ -5,8 +5,8 @@ use {
     gwasm_brass_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
     std::{
         fs::{self, OpenOptions},
-        io::{BufWriter},
-        path::{PathBuf},
+        io::BufWriter,
+        path::PathBuf,
         str::FromStr,
     },
 };

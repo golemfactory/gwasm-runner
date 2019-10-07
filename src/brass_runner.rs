@@ -1,15 +1,13 @@
 use {
-    crate::{local_runner::run_local_code, task::TaskBuilder, workdir::{GWASM_APP_INFO, WorkDir}},
+    crate::{
+        local_runner::run_local_code,
+        task::TaskBuilder,
+        workdir::{WorkDir, GWASM_APP_INFO},
+    },
     app_dirs::{app_dir, AppDataType, AppInfo},
     failure::Fallible,
     gwasm_api::TaskDef,
-    gwasm_brass_api::prelude::{
-        compute,
-        ComputedTask,
-        GWasmBinary,
-        Net,
-        ProgressUpdate
-    },
+    gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, Net, ProgressUpdate},
     serde::{Deserialize, Serialize},
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
     std::{
@@ -34,7 +32,6 @@ pub const GOLEM_APP_INFO: AppInfo = AppInfo {
     author: "Golem Factory",
 };
 
-
 struct RunnerContext {
     engine_ref: EngineRef,
     golem_config: GolemConfig,
@@ -55,15 +52,9 @@ struct GolemConfig {
 impl GolemConfig {
     fn from(config_path: PathBuf) -> Fallible<GolemConfig> {
         if config_path.exists() {
-            let parsed: GolemConfig = serde_json::from_reader(
-                OpenOptions::new()
-                    .read(true)
-                    .open(config_path)?
-            )?;
-
-            return Ok(parsed);
+            let user_config: GolemConfig = serde_json::from_reader(File::open(config_path)?)?;
+            return Ok(user_config);
         }
-
         Ok(GolemConfig::default())
     }
 }
@@ -75,7 +66,7 @@ impl Default for GolemConfig {
             bid: 1.0,
             data_dir: app_dir(AppDataType::UserData, &GOLEM_APP_INFO, "default").unwrap(),
             name: String::from("gwasm-task"),
-            net: String::from("rinkeby"),
+            net: String::from("testnet"),
         }
     }
 }
@@ -83,7 +74,9 @@ impl Default for GolemConfig {
 pub fn run_on_brass(wasm_path: &PathBuf, args: &[String]) -> Fallible<()> {
     let mut context = RunnerContext {
         engine_ref: Sandbox::init_ejs()?,
-        golem_config: GolemConfig::from(app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"))?,
+        golem_config: GolemConfig::from(
+            app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"),
+        )?,
         js_path: wasm_path.with_extension("js"),
         wasm_path: wasm_path.to_path_buf(),
         workdir: WorkDir::new(TASK_TYPE)?,
@@ -134,7 +127,9 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
         Net::from_str(context.golem_config.net.as_str())?,
         task,
         ProgressTracker,
-    ).map_err(|e| format!("Task computation failed: {}", e)).unwrap();
+    )
+    .map_err(|e| format!("Task computation failed: {}", e))
+    .unwrap();
 
     Ok(computed_task)
 }

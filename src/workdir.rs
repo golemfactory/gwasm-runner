@@ -16,8 +16,8 @@ pub struct WorkDir {
 impl WorkDir {
     pub fn new(task_type: &'static str) -> Fallible<Self> {
         let uuid = uuid::Uuid::new_v4();
-        let base =
-            app_dir(UserCache, &GWASM_APP_INFO, task_type)?.join(uuid.to_hyphenated_ref().to_string());
+        let base = app_dir(UserCache, &GWASM_APP_INFO, task_type)?
+            .join(uuid.to_hyphenated_ref().to_string());
         Ok(WorkDir { base })
     }
 
@@ -55,7 +55,9 @@ mod test {
     fn test_app_dir() {
         eprintln!(
             "dir={}",
-            app_dir(UserCache, &GWASM_APP_INFO, "/local").unwrap().display()
+            app_dir(UserCache, &GWASM_APP_INFO, "/local")
+                .unwrap()
+                .display()
         )
     }
 
