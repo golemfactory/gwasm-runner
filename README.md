@@ -1,4 +1,6 @@
-# gwasm-runner
+# gwasm-runner [![Build Status](https://github.com/golemfactory/gwasm-runner/workflows/Continuous%20integration/badge.svg)](https://github.com/golemfactory/gwasm-runner/actions?workflow=Continuous%20integration)
+
+
 Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem.
 
 It introduces simplistic API that resembles map-reduce paradigm. 
