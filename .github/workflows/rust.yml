@@ -18,6 +18,9 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+    - name: Install build deps
+      run: |
+              sudo apt-get install -y autoconf2.13 clang
     - name: Cargo fmt
       uses: actions-rs/cargo@v1
       with:
@@ -25,6 +28,11 @@ jobs:
         args: --all -- --check
     - name: Cargo build
       uses: actions-rs/cargo@v1
+      env:
+        CC: clang
+        CPP: clang -E
+        CXX: clang++
+        SHELL: /bin/bash
       with:
         command: build
     - name: Cargo test
@@ -32,3 +40,4 @@ jobs:
       with:
         command: test
 
+# vim: sts=2 sw=2
