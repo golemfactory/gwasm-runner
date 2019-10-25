@@ -1,25 +1,43 @@
-name: Rust
+name: Continuous integration
 
-on: [push]
+on: 
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: 
-          - ubuntu-latest
-          - windows-latest
-          - macOS-latest
+    name: Build
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v1
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-    - name: Build
+    - name: Install build deps
+      run: |
+              sudo apt-get install -y autoconf2.13 clang
+    - name: Cargo fmt
       uses: actions-rs/cargo@v1
       with:
+        command: fmt
+        args: --all -- --check
+    - name: Cargo build
+      uses: actions-rs/cargo@v1
+      env:
+        CC: clang
+        CPP: clang -E
+        CXX: clang++
+        SHELL: /bin/bash
+      with:
         command: build
+    - name: Cargo test
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+
+# vim: sts=2 sw=2

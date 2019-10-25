@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 mod utils;
 
-#[test]
 fn run_madelbrot() {
     let mandelbrot_args = vec!["0.2", "0.35", "0.6", "0.45", "100", "100", "2"]
         .into_iter()
