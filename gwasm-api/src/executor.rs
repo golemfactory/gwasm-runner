@@ -68,5 +68,4 @@ mod test {
         let ret = exec_for(&add_me, task, &PathBuf::from("."), ".".as_ref()).unwrap();
         eprintln!("{}", serde_json::to_string(&ret).unwrap());
     }
-
 }

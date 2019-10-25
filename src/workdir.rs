@@ -60,5 +60,4 @@ mod test {
                 .display()
         )
     }
-
 }
