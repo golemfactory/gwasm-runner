@@ -107,7 +107,5 @@ fn main() -> failure::Fallible<()> {
         Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
-
-        _ => unimplemented!(),
     }
 }

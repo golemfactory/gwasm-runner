@@ -8,7 +8,7 @@ use std::iter::FromIterator;
 use crate::executor::{exec_for, Executor};
 use crate::merger::{merge_for, Merger};
 use crate::splitter::{split_into, Splitter};
-use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef};
+use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::io::{BufReader, BufWriter};
@@ -29,9 +29,6 @@ pub enum ApiError {
     JsonError { error: serde_json::error::Error },
 }
 
-/// =================================== ///
-/// Parameters saving/loading
-
 fn load_from<T: DeserializeOwned>(json_file: &Path) -> Result<T, Error> {
     let mut inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
 
@@ -51,10 +48,7 @@ fn save_to<T: Serialize>(output_file: &Path, value: &T) -> Result<(), Error> {
     Ok(())
 }
 
-/// =================================== ///
-/// Map/Reduce steps
-
-pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
+fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     splitter: S,
     args: &Vec<String>,
 ) -> Result<(), Error> {
@@ -68,7 +62,7 @@ pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     save_to(&split_out_path, &split_params)
 }
 
-pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
+fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     executor: E,
     args: &Vec<String>,
 ) -> Result<(), Error> {
@@ -83,7 +77,7 @@ pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     save_to(&output_desc_path, &output_desc)
 }
 
-pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
+fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     merger: M,
     args: &Vec<String>,
 ) -> Result<(), Error> {
@@ -112,9 +106,6 @@ pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
         &exec_work_dir,
     )
 }
-
-/// =================================== ///
-/// Commands dispatcher - main run function.
 
 pub fn run<
     S: Splitter<WorkItem = In>,
@@ -257,7 +248,7 @@ mod test {
         let tasks_defs_file = test_dir.clone().join("task1.json");
         let task_def = vec![TaskArg::Meta(serde_json::json!(5))];
 
-        save_to(&tasks_defs_file, &TaskDef(task_def));
+        save_to(&tasks_defs_file, &TaskDef(task_def)).unwrap();
 
         execute_step(
             &execute1,

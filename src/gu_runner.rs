@@ -1,10 +1,9 @@
 use crate::local_runner::run_local_code;
 use crate::workdir::WorkDir;
 use actix::prelude::*;
-use awc::JsonBody;
 use failure::{bail, Fallible};
 use futures::unsync::oneshot;
-use futures::{Async, IntoFuture};
+use futures::Async;
 use gu_client::model::envman::{Command, CreateSession, ResourceFormat};
 use gu_client::{r#async as guc, NodeId};
 use gu_wasm_env_api::{EntryPoint, Manifest, MountPoint, RuntimeType};
@@ -18,7 +17,6 @@ use std::io::{self, BufWriter, Cursor, Read, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use uuid::Bytes;
 use zip::CompressionMethod;
 
 // 1. Image cache [TODO]

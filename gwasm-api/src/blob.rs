@@ -35,7 +35,15 @@ impl Output {
         Blob::from_output(self)
     }
 
-    pub fn save_bytes(self, data: impl AsRef<[u8]>) -> Result<Blob, Error> {
+    pub fn from_file(self, path: &Path) -> Result<Blob, Error> {
+        let mut inf = fs::OpenOptions::new().read(true).open(path)?;
+        let mut outf = self.open()?;
+
+        io::copy(&mut inf, &mut outf)?;
+        Ok(Blob::from_output(self))
+    }
+
+    pub fn from_bytes(self, data: impl AsRef<[u8]>) -> Result<Blob, Error> {
         let data = data.as_ref();
         self.open()?.write_all(data)?;
         Ok(Blob::from_output(self))
