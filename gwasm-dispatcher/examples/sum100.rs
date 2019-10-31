@@ -1,4 +1,4 @@
-use gwasm_api::{dispatcher, SplitContext};
+use gwasm_dispatcher::*;
 
 fn main() {
     dispatcher::run(

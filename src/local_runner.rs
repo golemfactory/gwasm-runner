@@ -1,6 +1,6 @@
 use crate::workdir::WorkDir;
 use failure::{bail, Fallible};
-use gwasm_api::TaskDef;
+use gwasm_dispatcher::TaskDef;
 use sp_wasm_engine::prelude::*;
 use sp_wasm_engine::sandbox::engine::EngineRef;
 use std::fs::OpenOptions;
@@ -109,7 +109,7 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
 
     let tasks_path = output_path.join("tasks.json");
 
-    let tasks: Vec<gwasm_api::TaskDef> =
+    let tasks: Vec<gwasm_dispatcher::TaskDef> =
         serde_json::from_reader(OpenOptions::new().read(true).open(tasks_path)?)?;
 
     let mut input_agg = Vec::new();

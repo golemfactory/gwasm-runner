@@ -46,7 +46,6 @@ jobs:
         args: --all-features
   publish_docs:
     name: Publish Documentation
-    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
@@ -54,9 +53,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps --all-features
+          args: -p gwasm-dispatcher --no-deps --all-features
       - name: Publish documentation
-        if: github.event_name == 'push' && github.event.ref == 'refs/heads/master' && github.repository == 'golemfactory/gwasm-runner'
+        if: github.event_name == 'push' && (github.event.ref == 'refs/heads/master' || github.event.branch == 'cargo-doc') && github.repository == 'golemfactory/gwasm-runner'
         run: |
           cd target/doc
           git init

@@ -8,7 +8,7 @@ description = "Command line tool for running gWasm compatible apps locally, via 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 members = [
-    "gwasm-api"
+    "gwasm-dispatcher"
 ]
 
 [features]
@@ -23,7 +23,7 @@ sp-wasm-engine = { git = "https://github.com/golemfactory/sp-wasm", branch="wasm
 structopt = { version="0.2", features = ["wrap_help", "suggestions", "color"] }
 app_dirs = "1.2.1"
 uuid = { version = "0.7", features = ["serde", "v4"] }
-gwasm-api = { path = "gwasm-api" }
+gwasm-dispatcher = { path = "gwasm-dispatcher" }
 gwasm-brass-api = { git = "https://github.com/golemfactory/gwasm-rust-api", branch = "master", package = "gwasm-api" }
 serde_json="1.0.40"
 serde= "1.0.99"
