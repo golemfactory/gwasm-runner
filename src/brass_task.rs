@@ -72,6 +72,7 @@ impl<'a> TaskBuilder<'a> {
             wasm_name,
             base_input_dir.clone(),
             base_input_dir.clone(),
+            None,
         );
 
         // Write binaries to task input dir
