@@ -1,9 +1,8 @@
 # gwasm-runner [![Build Status](https://github.com/golemfactory/gwasm-runner/workflows/Continuous%20integration/badge.svg)](https://github.com/golemfactory/gwasm-runner/actions?workflow=Continuous%20integration)
 
-
 Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem.
 
-It introduces simplistic API that resembles map-reduce paradigm. 
+It introduces simplistic API that resembles map-reduce paradigm. See gwasm_dispatcher [[cargo doc]](https://golemfactory.github.io/gwasm-runner/gwasm_dispatcher/index.html)
 
 This API enables developers to easily implement simple applications and run them on top of the Golem Unlimited and also on [Brass Golem 0.21 and later](https://blog.golemproject.net/brass-golem-beta-0-21-0-hello-mainnet-gwasm/).
 
