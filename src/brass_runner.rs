@@ -11,11 +11,7 @@ use {
     gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     indicatif::ProgressBar,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
-    std::{
-        fs::{File, OpenOptions},
-        io::Read,
-        path::PathBuf,
-    },
+    std::{fs::OpenOptions, path::PathBuf},
 };
 
 const TASK_TYPE: &str = "brass";
@@ -110,8 +106,8 @@ fn split(args: &[String], context: &mut RunnerContext) -> Fallible<()> {
 }
 
 fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
-    let wasm_file = read_file(&context.wasm_path)?;
-    let js_file = read_file(&context.js_path)?;
+    let wasm_file = std::fs::read(&context.wasm_path)?;
+    let js_file = std::fs::read(&context.js_path)?;
     let binary = GWasmBinary {
         js: js_file.as_slice(),
         wasm: wasm_file.as_slice(),
@@ -128,7 +124,7 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
 
     log::info!("Starting task computation...");
     let subtask_count = task.options().subtasks().count();
-    let address_parts: Vec<&str> = context.golem_config.address.split(":").collect();
+    let address_parts: Vec<&str> = context.golem_config.address.split(':').collect();
     let computed_task = compute(
         &context.golem_config.data_dir,
         address_parts[0],
@@ -189,10 +185,4 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
     )?;
 
     Ok(())
-}
-
-fn read_file(source: &PathBuf) -> Fallible<Vec<u8>> {
-    let mut buffer = Vec::new();
-    File::open(source)?.read_to_end(&mut buffer)?;
-    return Ok(buffer);
 }

@@ -1,10 +1,9 @@
 use crate::local_runner::run_local_code;
 use crate::workdir::WorkDir;
 use actix::prelude::*;
-use awc::JsonBody;
 use failure::{bail, Fallible};
 use futures::unsync::oneshot;
-use futures::{Async, IntoFuture};
+use futures::Async;
 use gu_client::model::envman::{Command, CreateSession, ResourceFormat};
 use gu_client::{r#async as guc, NodeId};
 use gu_wasm_env_api::{EntryPoint, Manifest, MountPoint, RuntimeType};
@@ -18,7 +17,6 @@ use std::io::{self, BufWriter, Cursor, Read, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use uuid::Bytes;
 use zip::CompressionMethod;
 
 // 1. Image cache [TODO]
@@ -132,7 +130,7 @@ impl Work {
         let task_def = self
             .meta_blob
             .download()
-            .map_err(|e| failure::err_msg(e))
+            .map_err(failure::err_msg)
             .fold(Vec::new(), |mut v, b| {
                 v.extend_from_slice(b.as_ref());
                 futures::future::ok::<_, failure::Error>(v)
@@ -210,7 +208,7 @@ impl WorkManager {
             .iter()
             .filter_map(|(node_id, state)| {
                 if state.is_free() {
-                    Some(node_id.clone())
+                    Some(*node_id)
                 } else {
                     None
                 }
@@ -242,7 +240,7 @@ impl WorkManager {
             *state = WorkPeerState::Pending(work, reply);
             let _ = ctx.spawn(
                 self.session
-                    .peer(node_id.clone())
+                    .peer(node_id)
                     .new_session(self.deployment_desc.clone())
                     .into_actor(self)
                     .then(move |r, act, ctx| match r {
@@ -267,7 +265,7 @@ impl WorkManager {
         log::info!("running work on {:?}", node_id);
         if let Some(s) = self
             .peers
-            .insert(node_id.clone(), WorkPeerState::Work(deployment.clone()))
+            .insert(node_id, WorkPeerState::Work(deployment.clone()))
         {
             let (work, reply) = match s {
                 WorkPeerState::Pending(work, reply) => (work, reply),
@@ -287,12 +285,9 @@ impl WorkManager {
                             log::debug!("deployment resolved: {:?}", r);
                             ctx.spawn(deployment.delete().then(|_| Ok(())).into_actor(act));
                             act.release_node(node_id, ctx);
-                            match r {
-                                Err(e) => {
-                                    let _ = reply.send(Err(e.into()));
-                                    return fut::Either::B(fut::ok(()));
-                                }
-                                Ok(_) => (),
+                            if let Err(e) = r {
+                                let _ = reply.send(Err(e.into()));
+                                return fut::Either::B(fut::ok(()));
                             }
 
                             fut::Either::A(
@@ -313,9 +308,8 @@ impl WorkManager {
     fn backoff_node(&mut self, node_id: NodeId) {
         log::info!("backoff node: {:?}", node_id);
         if let Some(s) = self.peers.insert(node_id, WorkPeerState::Backoff) {
-            match s {
-                WorkPeerState::Pending(work, reply) => self.todo.push_back((work, reply)),
-                _ => (),
+            if let WorkPeerState::Pending(work, reply) = s {
+                self.todo.push_back((work, reply))
             }
         }
     }
@@ -628,9 +622,8 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
                         let w = WorkManager::new(session.clone(), nodes, deployment_desc);
                         let we = w.clone();
                         futures::future::join_all(
-                            r.into_iter().map(move |work| {
-                                w.send(RunWork(work)).flatten().and_then(|t| Ok(t))
-                            }),
+                            r.into_iter()
+                                .map(move |work| w.send(RunWork(work)).flatten()),
                         )
                         .and_then(move |tasks| Ok((tasks, we)))
                     })

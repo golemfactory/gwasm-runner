@@ -1,11 +1,11 @@
 use crate::workdir::WorkDir;
-use failure::{bail, err_msg, Fallible};
+use failure::{bail, Fallible};
 use gwasm_api::TaskDef;
 use sp_wasm_engine::prelude::*;
 use sp_wasm_engine::sandbox::engine::EngineRef;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[allow(unused_mut, unused_variables)]
 pub fn run_local_code(
@@ -15,7 +15,6 @@ pub fn run_local_code(
     task_path: &Path,
     args: Vec<String>,
 ) -> Fallible<()> {
-    use std::path::{Component, PathBuf};
     let mut sandbox = Sandbox::new_on_engine(engine)?.set_exec_args(args)?;
 
     sandbox.init()?;
