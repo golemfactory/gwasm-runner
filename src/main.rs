@@ -4,8 +4,12 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::*;
 
+#[cfg(feature = "with-brass-mode")]
 mod brass_config;
+
+#[cfg(feature = "with-brass-mode")]
 mod brass_runner;
+#[cfg(feature = "with-brass-mode")]
 mod brass_task;
 #[cfg(feature = "with-gu-mode")]
 mod gu_runner;
@@ -13,6 +17,7 @@ mod local_runner;
 
 mod workdir;
 
+#[cfg(feature = "with-brass-mode")]
 use brass_runner::run_on_brass;
 use local_runner::run_on_local;
 
@@ -76,9 +81,18 @@ fn main() -> failure::Fallible<()> {
     );
 
     match opts.backend {
+        #[cfg(feature = "with-brass-mode")]
         Backend::BrassGolem => run_on_brass(&opts.wasm_app, &opts.wasm_app_args),
+
+        #[cfg(not(feature = "with-brass-mode"))]
+        Backend::BrassGolem => Ok(eprintln!("golem brass mode is unsupported in this runner")),
+
         Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
+        #[cfg(not(feature = "with-gu-mode"))]
+        Backend::GolemUnlimited(_) => {
+            Ok(eprintln!("golem unlimited is unsupported in this runner"))
+        }
     }
 }
