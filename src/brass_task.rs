@@ -72,6 +72,7 @@ impl<'a> TaskBuilder<'a> {
             wasm_name,
             base_input_dir.clone(),
             base_input_dir.clone(),
+            None,
         );
 
         // Write binaries to task input dir
@@ -81,7 +82,7 @@ impl<'a> TaskBuilder<'a> {
         let split_dir = self.workdir.split_output()?;
         let merge_dir = self.workdir.merge_path()?;
         let tasks_path = split_dir.join("tasks.json");
-        let tasks: Vec<gwasm_api::TaskDef> =
+        let tasks: Vec<gwasm_dispatcher::TaskDef> =
             serde_json::from_reader(OpenOptions::new().read(true).open(tasks_path)?)?;
 
         let mut input_agg = Vec::new();

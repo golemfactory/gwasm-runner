@@ -29,9 +29,6 @@ pub enum ApiError {
     JsonError { error: serde_json::error::Error },
 }
 
-/// =================================== ///
-/// Parameters saving/loading
-
 fn load_from<T: DeserializeOwned>(json_file: &Path) -> Result<T, Error> {
     let inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
 
@@ -51,10 +48,7 @@ fn save_to<T: Serialize>(output_file: &Path, value: &T) -> Result<(), Error> {
     Ok(())
 }
 
-/// =================================== ///
-/// Map/Reduce steps
-
-pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
+fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     splitter: S,
     args: &[String],
 ) -> Result<(), Error> {
@@ -68,7 +62,7 @@ pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     save_to(&split_out_path, &split_params)
 }
 
-pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
+fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     executor: E,
     args: &[String],
 ) -> Result<(), Error> {
@@ -83,7 +77,7 @@ pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     save_to(&output_desc_path, &output_desc)
 }
 
-pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
+fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     merger: M,
     args: &[String],
 ) -> Result<(), Error> {
@@ -112,9 +106,6 @@ pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
         &exec_work_dir,
     )
 }
-
-/// =================================== ///
-/// Commands dispatcher - main run function.
 
 pub fn run<
     S: Splitter<WorkItem = In>,

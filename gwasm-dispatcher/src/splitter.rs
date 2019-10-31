@@ -1,18 +1,25 @@
 use crate::blob::{Blob, Output};
 use crate::error::Error;
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
-use std::fs::File;
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+/// Provides execution context on split stage.
 pub trait SplitContext {
+    /// Command line arguments passed to runner.
+    fn args(&self) -> &Vec<String>;
+
+    /// Allocates new output file.
     fn new_blob(&mut self) -> Output;
 
-    fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error>;
+    #[doc(hidden)]
+    fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error> {
+        self.new_blob().file(path)
+    }
 
-    fn new_blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error>;
-
-    fn args(&self) -> &Vec<String>;
+    #[doc(hidden)]
+    fn blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error> {
+        self.new_blob().bytes(bytes)
+    }
 }
 
 pub trait Splitter {
@@ -40,6 +47,10 @@ struct WorkDirCtx {
 }
 
 impl SplitContext for WorkDirCtx {
+    fn args(&self) -> &Vec<String> {
+        &self.args
+    }
+
     fn new_blob(&mut self) -> Output {
         loop {
             let id = self.id;
@@ -50,27 +61,6 @@ impl SplitContext for WorkDirCtx {
                 return Output(output_path);
             }
         }
-    }
-
-    fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error> {
-        let mut dict_file = File::open(path)?;
-        let mut data = Vec::new();
-        dict_file.read_to_end(&mut data)?;
-
-        let output = self.new_blob();
-        output.open()?.write_all(data.as_slice())?;
-        Ok(Blob::from_output(output))
-    }
-
-    fn new_blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error> {
-        let output = self.new_blob();
-        output.open()?.write_all(bytes)?;
-
-        Ok(Blob::from_output(output))
-    }
-
-    fn args(&self) -> &Vec<String> {
-        &self.args
     }
 }
 

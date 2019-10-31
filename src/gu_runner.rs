@@ -7,7 +7,7 @@ use futures::Async;
 use gu_client::model::envman::{Command, CreateSession, ResourceFormat};
 use gu_client::{r#async as guc, NodeId};
 use gu_wasm_env_api::{EntryPoint, Manifest, MountPoint, RuntimeType};
-use gwasm_api::TaskDef;
+use gwasm_dispatcher::TaskDef;
 use serde::Serialize;
 use sp_wasm_engine::prelude::*;
 use std::collections::{HashMap, VecDeque};
@@ -443,7 +443,7 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
         let tasks_path = output_path.join("tasks.json");
 
         eprintln!("reading: {}", tasks_path.display());
-        let tasks: Vec<gwasm_api::TaskDef> =
+        let tasks: Vec<gwasm_dispatcher::TaskDef> =
             serde_json::from_reader(fs::OpenOptions::new().read(true).open(tasks_path)?)?;
 
         let merge_path = w.merge_path()?;

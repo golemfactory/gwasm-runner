@@ -1,11 +1,9 @@
 [package]
-name = "gwasm-api"
+name = "gwasm-dispatcher"
 version = "0.1.0"
 authors = ["Golem Factory <contact@golem.network>"]
 edition = "2018"
 description = "High level API for gWasmRunner compatible apps"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serde_json="1.0.40"

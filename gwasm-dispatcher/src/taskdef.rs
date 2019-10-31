@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[doc(hidden)]
 pub enum TaskArg {
     Meta(serde_json::Value),
     Blob(String),
@@ -26,6 +27,7 @@ impl TaskArg {
     }
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TaskDef(pub Vec<TaskArg>);
 
