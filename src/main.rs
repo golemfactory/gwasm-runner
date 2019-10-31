@@ -1,8 +1,7 @@
+#![allow(clippy::unit_arg)]
+
 use std::path::PathBuf;
 use std::str::FromStr;
-
-use failure::ResultExt;
-use sp_wasm_engine::prelude::*;
 use structopt::*;
 
 mod brass_config;
@@ -30,7 +29,7 @@ impl FromStr for Backend {
     fn from_str(s: &str) -> Result<Backend, String> {
         if s.starts_with("gu://") {
             let tail = &s[5..];
-            if !tail.contains(":") {
+            if !tail.contains(':') {
                 return Ok(Backend::GolemUnlimited(format!("{}:61622", tail)));
             } else {
                 return Ok(Backend::GolemUnlimited(tail.to_string()));
@@ -63,32 +62,6 @@ struct Opt {
     wasm_app: PathBuf,
     /// All other args that will be passed to the Wasm App
     wasm_app_args: Vec<String>,
-}
-
-pub fn run_wasm_app(
-    volumes: Vec<String>,
-    app: PathBuf,
-    args: Vec<String>,
-) -> failure::Fallible<()> {
-    let mut sandbox = Sandbox::new()?.set_exec_args(args)?;
-
-    sandbox.init()?;
-    for volume in volumes {
-        let mut it = volume.split(":").fuse();
-        match (it.next(), it.next(), it.next()) {
-            (Some(src), Some(dst), None) => sandbox
-                .mount(src, dst, NodeMode::Rw)
-                .context(format!("on bind mount: {}:{}", src, dst))?,
-            _ => return Err(failure::err_msg(format!("invalid volume: {}", volume))),
-        }
-    }
-
-    let app_js = app.with_extension("js");
-    let app_wasm = app.with_extension("wasm");
-
-    sandbox.run(app_js.as_path(), app_wasm.as_path())?;
-
-    Ok(())
 }
 
 fn main() -> failure::Fallible<()> {

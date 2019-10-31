@@ -52,16 +52,16 @@ impl<'a> TaskBuilder<'a> {
     }
 
     pub fn build(mut self) -> Fallible<Task> {
-        let name = self.name.take().unwrap_or("unknown".to_owned());
+        let name = self.name.take().unwrap_or_else(|| "unknown".to_owned());
         let bid = self.bid.unwrap_or(1.0);
-        let timeout = self.timeout.unwrap_or(
+        let timeout = self.timeout.unwrap_or_else(|| {
             Timeout::from_str("00:10:00")
-                .expect("could not correctly parse default task timeout value"),
-        );
-        let subtask_timeout = self.subtask_timeout.unwrap_or(
+                .expect("could not correctly parse default task timeout value")
+        });
+        let subtask_timeout = self.subtask_timeout.unwrap_or_else(|| {
             Timeout::from_str("00:10:00")
-                .expect("could not correctly parse default subtask timeout value"),
-        );
+                .expect("could not correctly parse default subtask timeout value")
+        });
 
         let js_name = format!("{}.js", name);
         let wasm_name = format!("{}.wasm", name);

@@ -1,17 +1,16 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use failure::Error;
 
-use crate::splitter::SplitContext;
-use crate::taskdef::{FromTaskArg, FromTaskDef, IntoTaskDef, TaskDef};
+use crate::taskdef::{FromTaskDef, TaskDef};
 
 pub trait Merger<In: FromTaskDef, Out: FromTaskDef> {
-    fn merge(self, args_vec: &Vec<String>, tasks: Vec<(In, Out)>);
+    fn merge(self, args_vec: &[String], tasks: Vec<(In, Out)>);
 }
 
 pub(crate) fn merge_for<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     merger: M,
-    args_vec: &Vec<String>,
+    args_vec: &[String],
     in_outs_pack: Vec<(TaskDef, TaskDef)>,
     split_dir: &Path,
     exec_dir: &Path,
@@ -33,7 +32,9 @@ pub(crate) fn merge_for<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
 impl<In: FromTaskDef, Out: FromTaskDef, F: FnOnce(&Vec<String>, Vec<(In, Out)>)> Merger<In, Out>
     for F
 {
-    fn merge(self, args_vec: &Vec<String>, tasks: Vec<(In, Out)>) {
-        self(args_vec, tasks);
+    #[allow(clippy::ptr_arg)]
+    fn merge(self, args: &[String], tasks: Vec<(In, Out)>) {
+        let v = args.into();
+        self(&v, tasks);
     }
 }

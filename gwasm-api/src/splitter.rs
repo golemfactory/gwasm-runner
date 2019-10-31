@@ -1,8 +1,6 @@
 use crate::blob::{Blob, Output};
 use crate::error::Error;
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
-use std::fs::File;
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 /// Provides execution context on split stage.
@@ -15,19 +13,19 @@ pub trait SplitContext {
 
     #[doc(hidden)]
     fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error> {
-        self.new_blob().from_file(path)
+        self.new_blob().file(path)
     }
 
     #[doc(hidden)]
     fn blob_from_bytes(&mut self, bytes: &[u8]) -> Result<Blob, Error> {
-        self.new_blob().from_bytes(bytes)
+        self.new_blob().bytes(bytes)
     }
 }
 
 pub trait Splitter {
     type WorkItem: IntoTaskDef + FromTaskDef;
 
-    fn split(self, context: &mut SplitContext) -> Vec<Self::WorkItem>;
+    fn split(self, context: &mut dyn SplitContext) -> Vec<Self::WorkItem>;
 }
 
 impl<Out, F: (FnOnce(&mut dyn SplitContext) -> Out)> Splitter for F
@@ -69,12 +67,12 @@ impl SplitContext for WorkDirCtx {
 pub(crate) fn split_into<S: Splitter>(
     splitter: S,
     base_path: &Path,
-    args: &Vec<String>,
+    args: &[String],
 ) -> Result<Vec<TaskDef>, Error> {
     let mut ctx = WorkDirCtx {
         id: 1000,
         work_dir: base_path.into(),
-        args: args.clone(),
+        args: args.into(),
     };
     splitter
         .split(&mut ctx)

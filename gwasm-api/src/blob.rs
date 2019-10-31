@@ -6,7 +6,7 @@ use std::fs;
 
 **/
 use std::io::{self, Read, Seek, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 pub struct Blob(PathBuf);
 pub struct Output(pub(crate) PathBuf);
@@ -35,7 +35,7 @@ impl Output {
         Blob::from_output(self)
     }
 
-    pub fn from_file(self, path: &Path) -> Result<Blob, Error> {
+    pub fn file(self, path: &Path) -> Result<Blob, Error> {
         let mut inf = fs::OpenOptions::new().read(true).open(path)?;
         let mut outf = self.open()?;
 
@@ -43,7 +43,7 @@ impl Output {
         Ok(Blob::from_output(self))
     }
 
-    pub fn from_bytes(self, data: impl AsRef<[u8]>) -> Result<Blob, Error> {
+    pub fn bytes(self, data: impl AsRef<[u8]>) -> Result<Blob, Error> {
         let data = data.as_ref();
         self.open()?.write_all(data)?;
         Ok(Blob::from_output(self))
@@ -62,6 +62,8 @@ impl IntoTaskArg for Blob {
 
 #[cfg(target_arch = "wasm32")]
 fn em_canonicalize(path: &Path) -> io::Result<PathBuf> {
+    use std::path::Component;
+
     let mut out_path = PathBuf::new();
 
     for c in path.components() {
