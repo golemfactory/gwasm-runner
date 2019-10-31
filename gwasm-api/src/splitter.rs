@@ -18,7 +18,7 @@ pub trait SplitContext {
 pub trait Splitter {
     type WorkItem: IntoTaskDef + FromTaskDef;
 
-    fn split(self, context: &mut SplitContext) -> Vec<Self::WorkItem>;
+    fn split(self, context: &mut dyn SplitContext) -> Vec<Self::WorkItem>;
 }
 
 impl<Out, F: (FnOnce(&mut dyn SplitContext) -> Out)> Splitter for F
@@ -55,7 +55,7 @@ impl SplitContext for WorkDirCtx {
     fn blob_from_file(&mut self, path: &Path) -> Result<Blob, Error> {
         let mut dict_file = File::open(path)?;
         let mut data = Vec::new();
-        dict_file.read_to_end(&mut data);
+        dict_file.read_to_end(&mut data)?;
 
         let output = self.new_blob();
         output.open()?.write_all(data.as_slice())?;
@@ -77,12 +77,12 @@ impl SplitContext for WorkDirCtx {
 pub(crate) fn split_into<S: Splitter>(
     splitter: S,
     base_path: &Path,
-    args: &Vec<String>,
+    args: &[String],
 ) -> Result<Vec<TaskDef>, Error> {
     let mut ctx = WorkDirCtx {
         id: 1000,
         work_dir: base_path.into(),
-        args: args.clone(),
+        args: args.into(),
     };
     splitter
         .split(&mut ctx)

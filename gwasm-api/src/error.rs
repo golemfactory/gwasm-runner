@@ -1,5 +1,4 @@
 use failure::Fail;
-use std::path::PathBuf;
 use std::{io, path};
 
 #[derive(Debug, Fail)]

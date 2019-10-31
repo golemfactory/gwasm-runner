@@ -8,9 +8,9 @@ use std::iter::FromIterator;
 use crate::executor::{exec_for, Executor};
 use crate::merger::{merge_for, Merger};
 use crate::splitter::{split_into, Splitter};
-use crate::taskdef::{FromTaskDef, IntoTaskArg, IntoTaskDef, TaskDef};
+use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::io::{BufReader, BufWriter};
 
 pub type TaskResult<In, Out> = Vec<(In, Out)>;
@@ -33,7 +33,7 @@ pub enum ApiError {
 /// Parameters saving/loading
 
 fn load_from<T: DeserializeOwned>(json_file: &Path) -> Result<T, Error> {
-    let mut inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
+    let inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
 
     Ok(serde_json::from_reader(inf)?)
 }
@@ -56,7 +56,7 @@ fn save_to<T: Serialize>(output_file: &Path, value: &T) -> Result<(), Error> {
 
 pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     splitter: S,
-    args: &Vec<String>,
+    args: &[String],
 ) -> Result<(), Error> {
     // TODO: check param len
     let work_dir = PathBuf::from(&args[0]);
@@ -70,7 +70,7 @@ pub fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
 
 pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     executor: E,
-    args: &Vec<String>,
+    args: &[String],
 ) -> Result<(), Error> {
     let params_path = PathBuf::from(args[0].clone());
     let input_dir = params_path.parent().ok_or(ApiError::NoParent)?;
@@ -85,7 +85,7 @@ pub fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
 
 pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     merger: M,
-    args: &Vec<String>,
+    args: &[String],
 ) -> Result<(), Error> {
     let tasks_params_path = PathBuf::from(args[0].clone());
     let tasks_outputs_path = PathBuf::from(args[1].clone());
@@ -94,7 +94,7 @@ pub fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     let exec_work_dir = tasks_outputs_path.parent().ok_or(ApiError::NoParent)?;
 
     if args[2] != "--" {
-        return Err(ApiError::NoSeparator)?;
+        return Err(ApiError::NoSeparator.into());
     }
 
     let input_params: Vec<TaskDef> = load_from(&tasks_params_path)?;
@@ -141,7 +141,7 @@ pub fn run<
     } else if command == "merge" {
         merge_step(merger, &args)
     } else {
-        Err(ApiError::NoCommand { command })?
+        Err(ApiError::NoCommand { command }.into())
     }
 }
 
@@ -149,6 +149,7 @@ pub fn run<
 /// Tests
 
 #[cfg(test)]
+#[allow(unused)]
 mod test {
 
     use super::{execute_step, load_from, save_to, split_step};
@@ -257,7 +258,7 @@ mod test {
         let tasks_defs_file = test_dir.clone().join("task1.json");
         let task_def = vec![TaskArg::Meta(serde_json::json!(5))];
 
-        save_to(&tasks_defs_file, &TaskDef(task_def));
+        save_to(&tasks_defs_file, &TaskDef(task_def)).unwrap();
 
         execute_step(
             &execute1,

@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::taskdef::{FromTaskArg, FromTaskDef, IntoTaskDef, TaskDef};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub trait Executor<In: FromTaskDef, Out: IntoTaskDef> {
     fn exec(&self, task: In) -> Out;
@@ -44,7 +44,8 @@ gen_bind! {T0=_0,T1=_1,T2=_2,T3=_3,T4=_4}
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::taskdef::{TaskArg, TaskDef};
+    use crate::taskdef::TaskDef;
+    use std::path::PathBuf;
 
     fn inc_v(v: u32) -> (u32,) {
         (v + 1,)
