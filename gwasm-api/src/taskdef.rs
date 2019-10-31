@@ -1,7 +1,6 @@
 use crate::error::Error;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::io;
 use std::path::{Path, PathBuf};
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -153,10 +152,11 @@ fn calc_rebase(from_path: &Path, to_path: &Path) -> PathBuf {
         }
     }
 
-    while let Some(_) = it_to.next() {
+    for _ in it_to {
         next_path.push("..");
     }
-    while let Some(c) = it_from.next() {
+
+    for c in it_from {
         next_path.push(c.as_os_str())
     }
 
