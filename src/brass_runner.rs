@@ -8,10 +8,10 @@ use {
     app_dirs::{app_dir, AppDataType},
     failure::Fallible,
     gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
-    gwasm_dispatcher::TaskDef,
+    gwasm_dispatcher::{TaskArg, TaskDef},
     indicatif::ProgressBar,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
-    std::{fs::OpenOptions, path::PathBuf},
+    std::{collections::HashMap, fs::File, fs::OpenOptions, path::PathBuf},
 };
 
 const TASK_TYPE: &str = "brass";
@@ -145,19 +145,27 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
     let merge_path = context.workdir.merge_path()?;
     let mut output_agg = Vec::new();
 
-    for subtask in task.subtasks.into_iter() {
-        let output_path = context.workdir.base_dir().join(subtask.name);
+    let mut id_to_subtask = HashMap::new();
+    for subtask in task.subtasks {
+        id_to_subtask.insert(subtask.name.clone(), subtask);
+    }
+
+    let subtask_order = get_subtask_order(merge_path.join("tasks_input.json"))?;
+    log::debug!("subtask order: {:?}", subtask_order);
+
+    // Read subtasks in original order (from tasks_input.json)
+    for subtask_id in subtask_order {
+        let subtask = id_to_subtask.remove(&subtask_id).unwrap();
+        let output_path = context.workdir.base_dir().join(&subtask.name);
         log::debug!("Reading output for subtask: {}", output_path.display());
 
-        for (path, reader) in subtask.data.into_iter() {
+        for (path, reader) in subtask.data {
             if path.ends_with("task.json") {
                 let output_data: TaskDef = serde_json::from_reader(reader)?;
                 output_agg.push(output_data.rebase_to(&output_path, &merge_path)?);
             }
         }
     }
-
-    log::debug!("output_agg: {:?}", output_agg);
 
     serde_json::to_writer_pretty(
         OpenOptions::new()
@@ -186,3 +194,23 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
 
     Ok(())
 }
+
+fn get_subtask_order(tasks_input_path: PathBuf) -> Fallible<Vec<String>> {
+    let task_defs: Vec<TaskDef> = serde_json::from_reader(File::open(tasks_input_path)?)?;
+
+    let subtask_ids: Vec<String> = task_defs
+        .iter()
+        .flat_map(|task_def| task_def.outputs())
+        .filter_map(|output_path| {
+            // Assuming the output path is relative to merge directory (i.e. starts with '..')
+            let mut split = output_path.split(std::path::MAIN_SEPARATOR).skip(1);
+            split.next()
+        })
+        .map(|subtask_id| {
+            subtask_id.to_string()
+        })
+        .collect();
+
+    Ok(subtask_ids)
+}
+
