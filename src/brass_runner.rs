@@ -8,7 +8,7 @@ use {
     app_dirs::{app_dir, AppDataType},
     failure::Fallible,
     gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
-    gwasm_dispatcher::{TaskArg, TaskDef},
+    gwasm_dispatcher::TaskDef,
     indicatif::ProgressBar,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
     std::{collections::HashMap, fs::File, fs::OpenOptions, path::PathBuf},
@@ -206,11 +206,8 @@ fn get_subtask_order(tasks_input_path: PathBuf) -> Fallible<Vec<String>> {
             let mut split = output_path.split(std::path::MAIN_SEPARATOR).skip(1);
             split.next()
         })
-        .map(|subtask_id| {
-            subtask_id.to_string()
-        })
+        .map(|subtask_id| subtask_id.to_string())
         .collect();
 
     Ok(subtask_ids)
 }
-
