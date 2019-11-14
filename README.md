@@ -2,13 +2,29 @@
 
 Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem.
 
-It introduces simplistic API that resembles map-reduce paradigm. See gwasm_dispatcher [[cargo doc]](https://golemfactory.github.io/gwasm-runner/gwasm_dispatcher/index.html)
+It introduces minimalistic [gwasm dispatcher API](https://golemfactory.github.io/gwasm-runner/gwasm_dispatcher/index.html) that resembles map-reduce paradigm.
+This API with only three operations:
 
-This API enables developers to easily implement simple applications and run them on top of the Golem Unlimited and also on [Brass Golem 0.21 and later](https://blog.golemproject.net/brass-golem-beta-0-21-0-hello-mainnet-gwasm/).
+1. `split` - divide the problem into subproblems.
+2. `execute` - performs computation for all subproblems independently.
+3. `merge` - collect all computation results and formulate final result.
 
-## building on macos
+enables developers to easily implement applications and run them on top of the [Golem Unlimited](https://github.com/golemfactory/golem-unlimited) and also on [Brass Golem 0.21 and later](https://blog.golemproject.net/brass-golem-beta-0-21-0-hello-mainnet-gwasm/).
 
-You need to have C compiler. Try
+## building from sources
+Having below prereqs just invoke
+```
+cargo build --release
+```
+### prerequisites
+You need to have C compiler, Python 2, AutoConf 2.13 and yasm
+
+#### on Linux
+```
+sudo apt-get install clang-6.0 autoconf2.13 yasm
+```
+
+#### on macOS
 ```
 xcode-select --install
 ```
@@ -16,24 +32,10 @@ xcode-select --install
 Use [Homebrew](https://brew.sh/#install) to install Python 2, AutoConf 2.13 and Yasm:
 ```bash
 brew install python@2 autoconf@2.13 yasm
-
 # remove newer version of autoconf
 brew unlink autoconf
 # and use 2.13 instead
 ac=`which autoconf213` && sudo ln -s "$ac" "${ac%213}"
-```
-
-Now you can build 
-```
-cargo build --release
-```
-
-## building on Linux
-
-You need to have python2 alias to python2.7
-```
-sudo apt-get install clang-6.0 autoconf2.13 yasm
-cargo build --release
 ```
 
 ## Running a WASM binary
@@ -69,5 +71,4 @@ When creating a task in the Golem network, there are some more parameters which 
     "task_timeout": "00:30:00"
 }
 ```
-
-To change the default values (e.g. when the datadir for your local Golem instance is located somewhere else) a JSON configuration file needs to be created. Under Linux, this file should be placed under: `~/.config/g-wasm-runner/brass/config.json`. You can copy the above JSON object, modify the fields' values and put it into that file. The runner will print its currently used configuration upon start-up.
+To change the default values (e.g. the datadir for your local Golem instance) you need to manually create a JSON file under: `~/.config/g-wasm-runner/brass/config.json` for Linux and `~/Library/Application\ Support/g-wasm-runner/brass/config.json`. You can copy the above JSON object, and modify what you need. The runner will print its currently used configuration upon start-up.
