@@ -1,6 +1,5 @@
 /target
 **/*.rs.bk
-Cargo.lock
 gwasm-api/test-results/
 tests/outputs
 
