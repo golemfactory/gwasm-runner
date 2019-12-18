@@ -19,7 +19,7 @@ cargo build --release
 ### prerequisites
 You need to have C compiler, Python 2, AutoConf 2.13 and yasm
 
-#### on Linux
+#### on Ubuntu
 ```
 sudo apt-get install clang-6.0 autoconf2.13 yasm
 ```
