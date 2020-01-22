@@ -1,7 +1,7 @@
 use {
     crate::workdir::WorkDir,
     failure::Fallible,
-    gwasm_brass_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
+    gwasm_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
     std::{
         fs::{self, OpenOptions},
         io::BufWriter,

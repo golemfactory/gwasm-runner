@@ -14,7 +14,7 @@ members = [
 [features]
 default=['with-gu-mode', 'with-brass-mode']
 with-gu-mode=['zip', 'awc', 'actix', 'gu-client', 'gu-wasm-env-api', 'futures', 'actix-files','tokio-timer']
-with-brass-mode=['gwasm-brass-api', 'indicatif', 'serde_urlencoded', 'serde_with']
+with-brass-mode=['gwasm-api', 'indicatif', 'serde_urlencoded', 'serde_with']
 
 [dependencies]
 log="0.4"
@@ -42,7 +42,6 @@ optional = true
 [dependencies.gu-client]
 git = "https://github.com/golemfactory/golem-unlimited.git"
 branch="feature/api-on-actix-http-1"
-#path="/home/prekucki/workspace/gu/golem-unlimited/gu-client"
 optional = true
 
 [dependencies.actix-http]
@@ -71,11 +70,9 @@ version = "0.2"
 optional=true
 
 # with-brass-mode dependencies
-[dependencies.gwasm-brass-api]
-git = "https://github.com/golemfactory/gwasm-rust-api"
-tag = "0.1.3"
+[dependencies.gwasm-api]
+version = "0.1.1"
 optional = true
-package = "gwasm-api"
 
 [dependencies.indicatif]
 version = "0.12.0"

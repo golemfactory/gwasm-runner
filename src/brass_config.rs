@@ -1,7 +1,7 @@
 use {
     app_dirs::{app_dir, AppDataType, AppInfo},
     failure::Fallible,
-    gwasm_brass_api::prelude::{Net, Timeout},
+    gwasm_api::prelude::{Net, Timeout},
     serde::{Deserialize, Serialize},
     std::{fs::File, path::PathBuf, str::FromStr},
 };

@@ -7,7 +7,7 @@ use {
     },
     app_dirs::{app_dir, AppDataType},
     failure::Fallible,
-    gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
+    gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     gwasm_dispatcher::TaskDef,
     indicatif::ProgressBar,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
