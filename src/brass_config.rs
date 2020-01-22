@@ -17,6 +17,8 @@ pub struct GolemConfig {
     pub address: String,
     #[serde(default = "default_bid")]
     pub bid: f64,
+    #[serde(default = "default_budget")]
+    pub budget: f64,
     #[serde(default = "default_data_dir")]
     pub data_dir: PathBuf,
     #[serde(default = "default_name")]
@@ -50,6 +52,7 @@ impl Default for GolemConfig {
         GolemConfig {
             address: default_address(),
             bid: default_bid(),
+            budget: default_budget(),
             data_dir: default_data_dir(),
             name: default_name(),
             net: default_net(),
@@ -64,6 +67,10 @@ fn default_address() -> String {
 }
 
 fn default_bid() -> f64 {
+    1.0
+}
+
+fn default_budget() -> f64 {
     1.0
 }
 
