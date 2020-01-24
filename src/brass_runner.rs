@@ -6,15 +6,20 @@ use {
         workdir::{WorkDir, GWASM_APP_INFO},
     },
     app_dirs::{app_dir, AppDataType},
-    failure::Fallible,
+    failure::{format_err, Fallible},
     gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     gwasm_dispatcher::TaskDef,
     indicatif::ProgressBar,
+    lazy_static::lazy_static,
+    regex::Regex,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
-    std::{collections::HashMap, fs::File, fs::OpenOptions, path::PathBuf},
+    std::{collections::HashMap, fs::File, fs::OpenOptions, io::stdin, path::PathBuf},
 };
 
 const TASK_TYPE: &str = "brass";
+lazy_static! {
+    static ref CONFIRMATION_REGEX: Regex = Regex::new("[yY][eE][sS]|[yY]").unwrap();
+}
 
 struct ProgressUpdater {
     bar: ProgressBar,
@@ -59,14 +64,18 @@ struct RunnerContext {
     workdir: WorkDir,
 }
 
-pub fn run_on_brass(wasm_path: &PathBuf, args: &[String]) -> Fallible<()> {
+pub fn run_on_brass(wasm_path: &PathBuf, skip_confirmation: bool, args: &[String]) -> Fallible<()> {
     let golem_config = GolemConfig::from(
         app_dir(AppDataType::UserConfig, &GWASM_APP_INFO, TASK_TYPE)?.join("config.json"),
     )?;
-    let workdir = WorkDir::new(TASK_TYPE)?;
 
+    log::info!("{:#?}", golem_config);
+    if !skip_confirmation && !has_user_confirmed(&wasm_path) {
+        return Err(format_err!("Task creation aborted."));
+    }
+
+    let workdir = WorkDir::new(TASK_TYPE)?;
     log::info!("Working directory: {}", workdir.base_dir().display());
-    log::info!("Using {:#?}", golem_config);
 
     let mut context = RunnerContext {
         engine_ref: Sandbox::init_ejs()?,
@@ -194,6 +203,20 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
     )?;
 
     Ok(())
+}
+
+fn has_user_confirmed(wasm_path: &PathBuf) -> bool {
+    println!(
+        "\nYou are about to create a Brass Golem task with the above parameters. \
+         \nThe WASM binary to be used for this task is: {:?} \
+         \nWould you like to proceed? (y/N)",
+        wasm_path
+    );
+
+    let mut input = String::new();
+    stdin().read_line(&mut input).unwrap();
+
+    return CONFIRMATION_REGEX.is_match(&input);
 }
 
 fn get_subtask_order(tasks_input_path: PathBuf) -> Fallible<Vec<String>> {
