@@ -7,7 +7,7 @@ use {
     },
     app_dirs::{app_dir, AppDataType},
     failure::Fallible,
-    gwasm_brass_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
+    gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     gwasm_dispatcher::TaskDef,
     indicatif::ProgressBar,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
@@ -116,6 +116,7 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
     let builder = TaskBuilder::new(context.workdir.clone(), binary)
         .name(&context.golem_config.name)
         .bid(context.golem_config.bid)
+        .budget(context.golem_config.budget)
         .timeout(context.golem_config.task_timeout)
         .subtask_timeout(context.golem_config.subtask_timeout);
     let task = builder.build()?;

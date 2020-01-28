@@ -1,7 +1,7 @@
 use {
     crate::workdir::WorkDir,
     failure::Fallible,
-    gwasm_brass_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
+    gwasm_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
     std::{
         fs::{self, OpenOptions},
         io::BufWriter,
@@ -14,6 +14,7 @@ pub struct TaskBuilder<'a> {
     binary: GWasmBinary<'a>,
     name: Option<String>,
     bid: Option<f64>,
+    budget: Option<f64>,
     timeout: Option<Timeout>,
     subtask_timeout: Option<Timeout>,
     workdir: WorkDir,
@@ -25,6 +26,7 @@ impl<'a> TaskBuilder<'a> {
             binary,
             name: None,
             bid: None,
+            budget: None,
             timeout: None,
             subtask_timeout: None,
             workdir,
@@ -41,6 +43,11 @@ impl<'a> TaskBuilder<'a> {
         self
     }
 
+    pub fn budget(mut self, budget: f64) -> Self {
+        self.budget = Some(budget);
+        self
+    }
+
     pub fn timeout(mut self, timeout: Timeout) -> Self {
         self.timeout = Some(timeout);
         self
@@ -54,6 +61,7 @@ impl<'a> TaskBuilder<'a> {
     pub fn build(mut self) -> Fallible<Task> {
         let name = self.name.take().unwrap_or_else(|| "unknown".to_owned());
         let bid = self.bid.unwrap_or(1.0);
+        let budget = self.budget.unwrap_or(1.0);
         let timeout = self.timeout.unwrap_or_else(|| {
             Timeout::from_str("00:10:00")
                 .expect("could not correctly parse default task timeout value")
@@ -153,6 +161,13 @@ impl<'a> TaskBuilder<'a> {
             &input_agg,
         )?;
 
-        Ok(Task::new(name, bid, timeout, subtask_timeout, options))
+        Ok(Task::new(
+            name,
+            bid,
+            Some(budget),
+            timeout,
+            subtask_timeout,
+            options,
+        ))
     }
 }
