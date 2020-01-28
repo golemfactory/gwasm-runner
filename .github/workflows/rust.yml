@@ -26,6 +26,11 @@ jobs:
       with:
         command: fmt
         args: --all -- --check
+    - name: Cache
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-target
     - name: Cargo build
       uses: actions-rs/cargo@v1
       env:
