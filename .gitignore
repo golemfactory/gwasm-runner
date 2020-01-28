@@ -5,3 +5,6 @@ tests/outputs
 
 # IDE
 .idea/
+*.iml
+
+*.png
