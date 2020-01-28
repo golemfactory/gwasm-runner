@@ -67,6 +67,9 @@ struct Opt {
     wasm_app: PathBuf,
     /// All other args that will be passed to the Wasm App
     wasm_app_args: Vec<String>,
+    /// Skip confirmation dialogs
+    #[structopt(short = "y")]
+    skip_confirmation: bool,
 }
 
 fn main() -> failure::Fallible<()> {
@@ -82,7 +85,9 @@ fn main() -> failure::Fallible<()> {
 
     match opts.backend {
         #[cfg(feature = "with-brass-mode")]
-        Backend::BrassGolem => run_on_brass(&opts.wasm_app, &opts.wasm_app_args),
+        Backend::BrassGolem => {
+            run_on_brass(&opts.wasm_app, opts.skip_confirmation, &opts.wasm_app_args)
+        }
 
         #[cfg(not(feature = "with-brass-mode"))]
         Backend::BrassGolem => Ok(eprintln!("golem brass mode is unsupported in this runner")),
