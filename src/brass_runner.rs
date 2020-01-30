@@ -208,7 +208,7 @@ fn has_user_confirmed(wasm_path: &PathBuf) -> bool {
         wasm_path
     );
 
-    return prompt_default("Would you like to proceed?", false)
+    return prompt_default("Would you like to proceed?", false);
 }
 
 fn get_subtask_order(tasks_input_path: PathBuf) -> Fallible<Vec<String>> {
