@@ -6,7 +6,7 @@ use {
         workdir::{WorkDir, GWASM_APP_INFO},
     },
     app_dirs::{app_dir, AppDataType},
-    failure::{bail, format_err, Fallible},
+    failure::{bail, Fallible},
     gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     gwasm_dispatcher::TaskDef,
     indicatif::ProgressBar,

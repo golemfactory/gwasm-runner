@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use failure::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
