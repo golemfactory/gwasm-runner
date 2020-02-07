@@ -68,7 +68,7 @@ struct Opt {
     /// All other args that will be passed to the Wasm App
     wasm_app_args: Vec<String>,
     /// Skip confirmation dialogs
-    #[structopt(short = "y")]
+    #[structopt(short = "y", long = "assume-yes")]
     skip_confirmation: bool,
 }
 
