@@ -6,13 +6,13 @@ use {
         workdir::{WorkDir, GWASM_APP_INFO},
     },
     app_dirs::{app_dir, AppDataType},
-    failure::{bail, format_err, Fallible},
+    failure::{bail, Fallible},
     gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
     gwasm_dispatcher::TaskDef,
     indicatif::ProgressBar,
     promptly::prompt_default,
     sp_wasm_engine::{prelude::Sandbox, sandbox::engine::EngineRef},
-    std::{collections::HashMap, fs::File, fs::OpenOptions, path::PathBuf},
+    std::{collections::HashMap, fs::OpenOptions, path::PathBuf},
 };
 
 const TASK_TYPE: &str = "brass";
@@ -82,8 +82,8 @@ pub fn run_on_brass(wasm_path: &PathBuf, skip_confirmation: bool, args: &[String
     };
 
     split(args, &mut context)?;
-    let computed_task = execute(&mut context)?;
-    merge(args, &mut context, computed_task)?;
+    let (computed_task, subtask_order) = execute(&mut context)?;
+    merge(args, &mut context, computed_task, subtask_order)?;
 
     log::info!("Task computed!");
 
@@ -110,7 +110,7 @@ fn split(args: &[String], context: &mut RunnerContext) -> Fallible<()> {
     Ok(())
 }
 
-fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
+fn execute(context: &mut RunnerContext) -> Fallible<(ComputedTask, Vec<String>)> {
     let wasm_file = std::fs::read(&context.wasm_path)?;
     let js_file = std::fs::read(&context.js_path)?;
     let binary = GWasmBinary {
@@ -124,7 +124,7 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
         .budget(context.golem_config.budget)
         .timeout(context.golem_config.task_timeout)
         .subtask_timeout(context.golem_config.subtask_timeout);
-    let task = builder.build()?;
+    let (task, subtask_order) = builder.build()?;
 
     log::debug!("Created task: {:#?}", task);
 
@@ -144,10 +144,15 @@ fn execute(context: &mut RunnerContext) -> Fallible<ComputedTask> {
 
     log::debug!("Computed task: {:#?}", computed_task);
 
-    Ok(computed_task)
+    Ok((computed_task, subtask_order))
 }
 
-fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fallible<()> {
+fn merge(
+    args: &[String],
+    context: &mut RunnerContext,
+    task: ComputedTask,
+    subtask_order: Vec<String>,
+) -> Fallible<()> {
     let merge_path = context.workdir.merge_path()?;
     let mut output_agg = Vec::new();
 
@@ -156,10 +161,7 @@ fn merge(args: &[String], context: &mut RunnerContext, task: ComputedTask) -> Fa
         id_to_subtask.insert(subtask.name.clone(), subtask);
     }
 
-    let subtask_order = get_subtask_order(merge_path.join("tasks_input.json"))?;
-    log::debug!("subtask order: {:?}", subtask_order);
-
-    // Read subtasks in original order (from tasks_input.json)
+    // Read subtasks in original order
     for subtask_id in subtask_order {
         let subtask = id_to_subtask.remove(&subtask_id).unwrap();
         let output_path = context.workdir.base_dir().join(&subtask.name);
@@ -209,21 +211,4 @@ fn has_user_confirmed(wasm_path: &PathBuf) -> bool {
     );
 
     return prompt_default("Would you like to proceed?", false);
-}
-
-fn get_subtask_order(tasks_input_path: PathBuf) -> Fallible<Vec<String>> {
-    let task_defs: Vec<TaskDef> = serde_json::from_reader(File::open(tasks_input_path)?)?;
-
-    let subtask_ids: Vec<String> = task_defs
-        .iter()
-        .flat_map(|task_def| task_def.outputs())
-        .filter_map(|output_path| {
-            // Assuming the output path is relative to merge directory (i.e. starts with '..')
-            let mut split = output_path.split(std::path::MAIN_SEPARATOR).skip(1);
-            split.next()
-        })
-        .map(|subtask_id| subtask_id.to_string())
-        .collect();
-
-    Ok(subtask_ids)
 }
