@@ -62,6 +62,7 @@ jobs:
       - name: Publish documentation
         if: github.event_name == 'push' && (github.event.ref == 'refs/heads/master' || github.event.branch == 'cargo-doc') && github.repository == 'golemfactory/gwasm-runner'
         run: |
+          cp scripts/runner-update.sh target/doc/
           cd target/doc
           git init
           git add .
