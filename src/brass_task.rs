@@ -58,7 +58,7 @@ impl<'a> TaskBuilder<'a> {
         self
     }
 
-    pub fn build(mut self) -> Fallible<Task> {
+    pub fn build(mut self) -> Fallible<(Task, Vec<String>)> {
         let name = self.name.take().unwrap_or_else(|| "unknown".to_owned());
         let bid = self.bid.unwrap_or(1.0);
         let budget = self.budget.unwrap_or(1.0);
@@ -95,63 +95,66 @@ impl<'a> TaskBuilder<'a> {
 
         let mut input_agg = Vec::new();
 
-        // Create subtask directories and definitions
-        for task in tasks {
-            let subtask_dir = self.workdir.new_task()?;
+        let subtask_order: Fallible<Vec<String>> = tasks
+            .into_iter()
+            .map(|task| {
+                let subtask_dir = self.workdir.new_task()?;
 
-            // Output does not have its separate dir since Brass does not expect subdirectories
-            // in its output dir
-            let subtask_input_path = subtask_dir.join("in");
-            std::fs::create_dir(&subtask_input_path)?;
+                // Output does not have its separate dir since Brass does not expect subdirectories
+                // in its output dir
+                let subtask_input_path = subtask_dir.join("in");
+                std::fs::create_dir(&subtask_input_path)?;
 
-            for blob_path in task.blobs() {
-                std::fs::rename(
-                    &split_dir.join(blob_path),
-                    subtask_input_path.join(blob_path),
+                for blob_path in task.blobs() {
+                    std::fs::rename(
+                        &split_dir.join(blob_path),
+                        subtask_input_path.join(blob_path),
+                    )?;
+                }
+
+                serde_json::to_writer_pretty(
+                    BufWriter::new(
+                        OpenOptions::new()
+                            .create_new(true)
+                            .write(true)
+                            .open(subtask_input_path.join("task.json"))?,
+                    ),
+                    &task,
                 )?;
-            }
 
-            serde_json::to_writer_pretty(
-                BufWriter::new(
-                    OpenOptions::new()
-                        .create_new(true)
-                        .write(true)
-                        .open(subtask_input_path.join("task.json"))?,
-                ),
-                &task,
-            )?;
+                let mut subtask = Subtask::new();
 
-            let mut subtask = Subtask::new();
-
-            // Define which files should be copied over from the sandbox to the host after the task
-            // is finished
-            for output_file in task.outputs() {
+                // Define which files should be copied over from the sandbox to the host after the task
+                // is finished
+                for output_file in task.outputs() {
+                    subtask
+                        .output_file_paths
+                        .push(PathBuf::from("/").join(output_file));
+                }
                 subtask
                     .output_file_paths
-                    .push(PathBuf::from("/").join(output_file));
-            }
-            subtask
-                .output_file_paths
-                .push(PathBuf::from("/").join("task.json"));
+                    .push(PathBuf::from("/").join("task.json"));
 
-            subtask.exec_args = vec![
-                "exec".to_owned(),
-                "/in/task.json".to_owned(),
-                "/task.json".to_owned(),
-            ];
+                subtask.exec_args = vec![
+                    "exec".to_owned(),
+                    "/in/task.json".to_owned(),
+                    "/task.json".to_owned(),
+                ];
 
-            options.add_subtask(
-                subtask_dir
+                let subtask_name = subtask_dir
                     .file_name()
                     .unwrap()
                     .to_string_lossy()
-                    .to_string(),
-                subtask,
-            );
+                    .to_string();
 
-            let task = task.rebase_output("", "../");
-            input_agg.push(task.rebase_to(&subtask_input_path, &merge_dir)?);
-        }
+                options.add_subtask(subtask_name.clone(), subtask);
+
+                let task = task.rebase_output("", "../");
+                input_agg.push(task.rebase_to(&subtask_input_path, &merge_dir)?);
+
+                Ok(subtask_name)
+            })
+            .collect();
 
         serde_json::to_writer_pretty(
             OpenOptions::new()
@@ -161,13 +164,9 @@ impl<'a> TaskBuilder<'a> {
             &input_agg,
         )?;
 
-        Ok(Task::new(
-            name,
-            bid,
-            Some(budget),
-            timeout,
-            subtask_timeout,
-            options,
+        Ok((
+            Task::new(name, bid, Some(budget), timeout, subtask_timeout, options),
+            subtask_order.unwrap(),
         ))
     }
 }
