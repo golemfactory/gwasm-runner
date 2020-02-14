@@ -58,17 +58,24 @@ Let's take a closer look at that command:
 - `Brass` stands for Brass Golem, the name for the current iteration of the Golem project.
 - The parameters after `--` are passed directly to the WASM program, therefore they are app-specific. In the case of the mandelbrot example, the first two numbers (`1000 1000`) are the width and height of the output image. The last number (`4`) is the subtask count, which determines the number subtasks we want to split our work into.
 
-When creating a task in the Golem network, there are some more parameters which can be defined. For example, we want to be able to specify how much we're willing to pay for the computation or what the timeout for a task should be. These Golem-specific parameters can be defined in a configuration file which will be used by the runner. By default, these values are the following:
+Should you need to change the default configuration for the runner (e.g. whether to use Ethereum's mainnet or testnet), there is an option to use a JSON configuration file. By default, the following values are used when creating a Golem task:
 
 ```
 {
     "data_dir": "/home/user/.local/share/golem/default",
     "address": "127.0.0.1:61000",
-    "bid": 1.0,
+    "budget": 1.0,
     "name": "gwasm-task",
     "net": "testnet",
     "subtask_timeout": "00:10:00",
     "task_timeout": "00:30:00"
 }
 ```
-To change the default values (e.g. the datadir for your local Golem instance) you need to manually create a JSON file under: `~/.config/g-wasm-runner/brass/config.json` for Linux and `~/Library/Application\ Support/g-wasm-runner/brass/config.json`. You can copy the above JSON object, and modify what you need. The runner will print its currently used configuration upon start-up.
+
+To override the default values you will need to create your own, local configuration file. The path to this file depends on your operating system, here are examples for each platform:
+
+- Linux: `$HOME/.config/g-wasm-runner/brass/config.json` 
+- MacOS: `$HOME/Library/Application Support/g-wasm-runner/brass/config.json`
+- Windows: `C:\Users\<USER_NAME>\AppData\Roaming\Golem Factory\g-wasm-runner\brass\config.json`
+
+As for the contents, you can copy the JSON object shown above and modify its fields as required. The runner will print its currently used configuration upon start-up.

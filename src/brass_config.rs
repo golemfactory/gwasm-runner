@@ -8,7 +8,7 @@ use {
 
 pub const GOLEM_APP_INFO: AppInfo = AppInfo {
     name: "golem",
-    author: "Golem Factory",
+    author: "golem",
 };
 
 #[derive(Debug, Deserialize, Serialize)]
