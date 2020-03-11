@@ -3,7 +3,7 @@
 //! ## Examples
 //!
 //! ```edition2018
-//! use gwasm_api::{dispatcher, SplitContext};
+//! use gwasm_dispatcher::{dispatcher, SplitContext};
 //!
 //! fn main() {
 //!     dispatcher::run(
