@@ -1,27 +1,26 @@
-use failure::Fail;
 use std::{io, path};
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[fail(display = "{}", _0)]
-    IO(#[cause] io::Error),
+    #[error("{0}")]
+    IO(#[source] io::Error),
 
-    #[fail(display = "{}", _0)]
+    #[error("{0}")]
     Prefix(path::StripPrefixError),
 
-    #[fail(display = "invalid path: {}", _0)]
+    #[error("invalid path: {0}")]
     InvalidPath(String),
 
-    #[fail(display = "{}", _0)]
+    #[error("{0}")]
     Json(serde_json::error::Error),
 
-    #[fail(display = "invalid arg")]
+    #[error("invalid arg")]
     MetaExpected,
 
-    #[fail(display = "Expected blob entry.")]
+    #[error("Expected blob entry.")]
     BlobExpected,
 
-    #[fail(display = "Expected output entry.")]
+    #[error("Expected output entry.")]
     OutputExpected,
 }
 

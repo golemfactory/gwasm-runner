@@ -1,31 +1,26 @@
+use crate::wasm_engine::{Engine, Mode, Sandbox};
 use crate::workdir::WorkDir;
-use failure::{bail, Fallible};
+use anyhow::{anyhow, bail, Result as Fallible};
 use gwasm_dispatcher::TaskDef;
-use sp_wasm_engine::prelude::*;
-use sp_wasm_engine::sandbox::engine::EngineRef;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 #[allow(unused_mut, unused_variables)]
-pub fn run_local_code(
-    engine: EngineRef,
+pub fn run_local_code<E: Engine>(
+    engine: E,
     wasm_path: &Path,
-    js_path: &Path,
     task_path: &Path,
     args: Vec<String>,
 ) -> Fallible<()> {
-    let mut sandbox = Sandbox::new_on_engine(engine)?.set_exec_args(args)?;
-
-    sandbox.init()?;
+    let mut sandbox = engine.sandbox(args)?;
 
     let mut base = PathBuf::from("/");
     let mut cur_dir = std::env::current_dir()?;
 
-    //eprintln!("cd={}", cur_dir.display());
-
-    #[cfg(windows)]
-    {
+    if engine.supports_overlay_mount() {
+        sandbox.mount("/", "@", Mode::Rw)?;
+    } else {
         let mut it = cur_dir.components();
         let mut c = it.next();
         while let Some(Component::Prefix(p)) = c {
@@ -34,27 +29,28 @@ pub fn run_local_code(
         }
 
         cur_dir = PathBuf::from("/hostfs").join(it.as_path());
-        sandbox.mount(base, "/hostfs", NodeMode::Rw)?;
+        sandbox.mount(&base, "/hostfs", Mode::Rw)?;
+        if !engine.supports_workdir() {
+            sandbox.mount(".", ".", Mode::Rw)?;
+        }
     }
-    #[cfg(unix)]
-    {
-        sandbox.mount("/", "@", NodeMode::Rw)?;
+
+    sandbox.mount(task_path, "/task_dir", Mode::Rw)?;
+
+    if engine.supports_workdir() {
+        sandbox.work_dir(cur_dir.to_string_lossy().replace("\\", "/").as_ref())?
     }
-    //eprintln!("cd={} root={}", cur_dir.display(), base.display());
 
-    sandbox.mount(task_path, "/task_dir", NodeMode::Rw)?;
+    let code = sandbox.from_wasm_path(wasm_path)?;
 
-    sandbox
-        .work_dir(cur_dir.to_string_lossy().replace("\\", "/").as_ref())?
-        .run(js_path, wasm_path)?;
+    sandbox.run(code)?;
 
     Ok(())
 }
 
-fn run_remote_code(
-    engine: EngineRef,
+fn run_remote_code<E: Engine>(
+    engine: E,
     wasm_path: &Path,
-    js_path: &Path,
     task_input_path: &Path,
     task_output_path: &Path,
 ) -> Fallible<()> {
@@ -63,16 +59,21 @@ fn run_remote_code(
         task_input_path.display(),
         task_output_path.display()
     );
-    let mut sandbox = Sandbox::new_on_engine(engine)?.set_exec_args(&[
-        "exec",
-        "/in/task.json",
-        "/out/task.json",
+    let mut sandbox = engine.sandbox(vec![
+        "exec".to_string(),
+        "/in/task.json".to_string(),
+        "/out/task.json".to_string(),
     ])?;
 
-    sandbox.init()?;
-    sandbox.mount(task_input_path, "/in", NodeMode::Ro)?;
-    sandbox.mount(task_output_path, "/out", NodeMode::Rw)?;
-    sandbox.work_dir("/in")?.run(js_path, wasm_path)?;
+    sandbox.mount(task_input_path, "/in", Mode::Ro)?;
+    sandbox.mount(task_output_path, "/out", Mode::Rw)?;
+    if engine.supports_workdir() {
+        sandbox.work_dir("/in")?;
+    }
+
+    let code = sandbox.from_wasm_path(wasm_path)?;
+    sandbox.run(code)?;
+
     log::info!(
         "done work in {} => {}",
         task_input_path.display(),
@@ -81,15 +82,8 @@ fn run_remote_code(
     Ok(())
 }
 
-pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
-    let engine_ref = Sandbox::init_ejs()?;
+pub fn run_on_local(engine: impl Engine, wasm_path: &Path, args: &[String]) -> Fallible<()> {
     let mut w = WorkDir::new("local")?;
-
-    let js_path = wasm_path.with_extension("js");
-
-    if !js_path.exists() {
-        bail!("file not found: {}", js_path.display())
-    }
 
     let output_path = w.split_output()?;
     {
@@ -98,13 +92,7 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
         split_args.push("/task_dir/".to_owned());
         split_args.extend(args.iter().cloned());
         eprintln!("work dir: {}", output_path.display());
-        run_local_code(
-            engine_ref.clone(),
-            wasm_path,
-            &js_path,
-            &output_path,
-            split_args,
-        )?;
+        run_local_code(engine.clone(), wasm_path, &output_path, split_args)?;
     }
 
     let tasks_path = output_path.join("tasks.json");
@@ -141,9 +129,8 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
         )?;
 
         run_remote_code(
-            engine_ref.clone(),
+            engine.clone(),
             wasm_path,
-            &js_path,
             &task_input_path,
             &task_output_path,
         )?;
@@ -180,9 +167,8 @@ pub fn run_on_local(wasm_path: &Path, args: &[String]) -> Fallible<()> {
         merge_args.push("--".to_owned());
         merge_args.extend(args.iter().cloned());
         run_local_code(
-            engine_ref,
+            engine.clone(),
             wasm_path,
-            &js_path,
             merge_path.parent().unwrap(),
             merge_args,
         )?;

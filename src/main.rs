@@ -15,7 +15,10 @@ mod brass_task;
 mod gu_runner;
 mod local_runner;
 
+mod wasm_engine;
 mod workdir;
+
+mod lwg;
 
 #[cfg(feature = "with-brass-mode")]
 use brass_runner::run_on_brass;
@@ -26,6 +29,10 @@ enum Backend {
     Local,
     GolemUnlimited(String),
     BrassGolem,
+    Lwg {
+        url: Option<String>,
+        token: Option<String>,
+    },
 }
 
 impl FromStr for Backend {
@@ -47,6 +54,10 @@ impl FromStr for Backend {
                 std::env::var("GU_HUB_ADDR").map_err(|e| e.to_string())?,
             )),
             "Golem" | "Brass" | "BrassGolem" | "GolemBrass" => Ok(Backend::BrassGolem),
+            "yagna" | "lwg" => Ok(Backend::Lwg {
+                url: None,
+                token: None,
+            }),
             x => Err(format!("{} is not a valid Backend", x)),
         }
     }
@@ -72,16 +83,18 @@ struct Opt {
     skip_confirmation: bool,
 }
 
-fn main() -> failure::Fallible<()> {
+fn main() -> anyhow::Result<()> {
     let opts = Opt::from_args();
 
     env_logger::init_from_env(
         env_logger::Env::default().default_filter_or(match opts.verbose {
-            0 => "info",
+            0 => "cranelift_wasm=warn,info",
             1 => "debug",
             _ => "sp_wasm_engine=debug,info",
         }),
     );
+
+    let engine = wasm_engine::engine();
 
     match opts.backend {
         #[cfg(feature = "with-brass-mode")]
@@ -92,7 +105,10 @@ fn main() -> failure::Fallible<()> {
         #[cfg(not(feature = "with-brass-mode"))]
         Backend::BrassGolem => Ok(eprintln!("golem brass mode is unsupported in this runner")),
 
-        Backend::Local => run_on_local(&opts.wasm_app, &opts.wasm_app_args),
+        Backend::Local => run_on_local(engine, &opts.wasm_app, &opts.wasm_app_args),
+        Backend::Lwg { url, token } => {
+            lwg::run(url, token, engine, &opts.wasm_app, &opts.wasm_app_args)
+        }
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
         #[cfg(not(feature = "with-gu-mode"))]

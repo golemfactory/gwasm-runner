@@ -1,9 +1,7 @@
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
-
-use failure::{Error, Fail};
 use std::iter::FromIterator;
+use std::path::{Path, PathBuf};
 
 use crate::executor::{exec_for, Executor};
 use crate::merger::{merge_for, Merger};
@@ -15,19 +13,21 @@ use std::io::{BufReader, BufWriter};
 
 pub type TaskResult<In, Out> = Vec<(In, Out)>;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApiError {
-    #[fail(display = "Can't find parent")]
+    #[error("Can't find parent")]
     NoParent,
-    #[fail(display = "Expected -- separator.")]
+    #[error("Expected -- separator.")]
     NoSeparator,
-    #[fail(display = "No such command {}.", command)]
+    #[error("No such command {command}.")]
     NoCommand { command: String },
-    #[fail(display = "Invalid params format: {}.", message)]
+    #[error("Invalid params format: {message}.")]
     InvalidParamsFormat { message: String },
-    #[fail(display = "Json conversion error: {}.", error)]
+    #[error("Json conversion error: {error}.")]
     JsonError { error: serde_json::error::Error },
 }
+
+type Error = Box<dyn std::error::Error + 'static>;
 
 fn load_from<T: DeserializeOwned>(json_file: &Path) -> Result<T, Error> {
     let inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
