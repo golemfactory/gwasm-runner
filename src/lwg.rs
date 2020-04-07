@@ -5,6 +5,8 @@ use actix::prelude::*;
 use awc::error::WsClientError;
 use chrono::Utc;
 use futures::channel::oneshot;
+use futures::prelude::*;
+use futures::TryFutureExt;
 use gwasm_dispatcher::TaskDef;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -34,9 +36,6 @@ struct DistSlot {
 }
 
 impl DistSlot {
-
-
-
     fn url(&self) -> &str {
         self.upload_url.as_str()
     }
@@ -46,12 +45,19 @@ impl DistSlot {
     }
 
     async fn download_json<T: DeserializeOwned>(&self) -> anyhow::Result<T> {
-        unimplemented!()
+        let c = awc::Client::new();
+        Ok(c.get(&self.download_url)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("download json: {}", e))?
+            .json()
+            .await
+            .map_err(|e| anyhow::anyhow!("download json: {}", e))?)
     }
 }
 
 impl DistStorage {
-    fn new(storage_url : Arc<str>) -> Self {
+    fn new(storage_url: Arc<str>) -> Self {
         let url = storage_url;
         Self { url }
     }
@@ -66,7 +72,8 @@ impl DistStorage {
             .content_length(bytes.len() as u64)
             .content_type("application/octet-stream")
             .send_body(bytes)
-            .await.map_err(|e| anyhow::anyhow!("upload bytes: {}", e))?;
+            .await
+            .map_err(|e| anyhow::anyhow!("upload bytes: {}", e))?;
 
         Ok(format!("{}{}-{}", self.url, prefix, id))
     }
@@ -337,6 +344,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                     let me = ctx.address();
 
                     let requestor_api = self.api.clone();
+                    let me = ctx.address();
                     let _ = ctx.spawn(
                         async move {
                             let _ack = requestor_api
@@ -354,8 +362,15 @@ impl Handler<ProcessEvent> for AgreementProducer {
                                 .await
                                 .unwrap();
                             log::info!("agreement = {} CONFIRMED!", new_agreement_id);
+                            new_agreement_id
                         }
-                        .into_actor(self),
+                        .into_actor(self)
+                        .then(|agreement_id, act, ctx| {
+                            if let Some(mut s) = act.pending.pop() {
+                                s.send(agreement_id);
+                            }
+                            fut::ready(())
+                        }),
                     );
                 }
             }
@@ -407,6 +422,7 @@ async fn process_task(
     client: WebClient,
     a: Addr<AgreementProducer>,
     output_path: PathBuf,
+    merge_path: PathBuf,
     task: TaskDef,
 ) -> anyhow::Result<TaskResult> {
     let mut commands = Vec::new();
@@ -432,65 +448,71 @@ async fn process_task(
       "entry_point": "main",
       "args": ["exec", "/in/task.json", "/out/task.json"]
     }}));
+    let mut outputs = Vec::new();
     for blob_path in task.outputs() {
         let slot = storage.download_slot().await?;
         commands.push(serde_json::json!({"transfer": {
             "from": format!("container:/out/{}", blob_path),
             "to": slot.url()
         }}));
+        outputs.push((slot, merge_path.join(blob_path)))
     }
     let output_slot = storage.download_slot().await?;
     commands.push(serde_json::json!({"transfer": {
-            "from": format!("container:/out/task.json"),
-            "to": output_slot.url()
-        }}));
-
+        "from": format!("container:/out/task.json"),
+        "to": output_slot.url()
+    }}));
 
     let commands_cnt = commands.len();
-    let script = ya_client::model::activity::ExeScriptRequest::new(serde_json::to_string_pretty(&commands)?);
+    let script =
+        ya_client::model::activity::ExeScriptRequest::new(serde_json::to_string_pretty(&commands)?);
 
     let activity_api = client.interface::<ya_client::activity::ActivityRequestorApi>()?;
 
+    let agreement_id = a.send(NewAgreement).await??;
+    let activity_id = match activity_api.control().create_activity(&agreement_id).await {
+        Ok(id) => id,
+        Err(e) => {
+            log::error!("activity create error: {}", e);
+            return Err(e.into());
+        }
+    };
 
-        let agreement_id = a.send(NewAgreement).await??;
-        let activity_id = match activity_api.control().create_activity(&agreement_id).await {
-            Ok(id) => id,
-            Err(e) => {
-                log::error!("activity create error: {}", e);
-                return Err(e.into())
-            }
-        };
-
-        let batch_id = activity_api.control().exec(script.clone(), &activity_id).await?;
-        loop {
-            let state = activity_api.state().get_state(&activity_id).await?;
-            if !state.alive() {
-                log::info!("activity {} is NOT ALIVE any more.", activity_id);
-                break;
-            }
-
-            log::info!("activity {} state: {:?}", activity_id, state);
-            let results = activity_api
-                .control()
-                .get_exec_batch_results(&activity_id, &batch_id, Some(7))
-                .await?;
-
-            log::info!("batch results {:?}", results);
-
-            if results.len() >= commands_cnt {
-                break;
-            }
-
-            tokio::time::delay_for(Duration::from_millis(700)).await;
+    let batch_id = activity_api
+        .control()
+        .exec(script.clone(), &activity_id)
+        .await?;
+    loop {
+        let state = activity_api.state().get_state(&activity_id).await?;
+        if !state.alive() {
+            log::info!("activity {} is NOT ALIVE any more.", activity_id);
+            break;
         }
 
+        log::info!("activity {} state: {:?}", activity_id, state);
+        let results = activity_api
+            .control()
+            .get_exec_batch_results(&activity_id, &batch_id, Some(7))
+            .await?;
+
+        log::info!("batch results {:?}", results);
+
+        if results.len() >= commands_cnt {
+            break;
+        }
+
+        tokio::time::delay_for(Duration::from_millis(700)).await;
+    }
 
     // TODO: task output path resolve
     let task_def = output_slot.download_json().await?;
+    for (slot, output) in outputs {
+        slot.download(&output).await?;
+    }
 
     Ok(TaskResult {
         agreement_id,
-        task_def
+        task_def,
     })
 }
 
@@ -544,11 +566,16 @@ pub fn run(
         let market_api: ya_client::market::MarketRequestorApi = client.interface()?;
         let a = agreement_producer(&market_api, &my_demand).await?;
         let storage = DistStorage::new(storage_server);
-        let agreements = futures::future::join_all(
-            tasks
-                .into_iter()
-                .map(|t| process_task(storage.clone(), client.clone(), a.clone(),  task_output_path.clone(), t)),
-        )
+        let agreements = futures::future::join_all(tasks.into_iter().map(|t| {
+            process_task(
+                storage.clone(),
+                client.clone(),
+                a.clone(),
+                task_output_path.clone(),
+                merge_path_ref.clone(),
+                t,
+            )
+        }))
         .await;
 
         Ok::<_, anyhow::Error>(())
