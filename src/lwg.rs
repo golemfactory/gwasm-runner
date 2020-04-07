@@ -2,6 +2,7 @@ use crate::local_runner::run_local_code;
 use crate::wasm_engine::Engine;
 use crate::workdir::WorkDir;
 use actix::prelude::*;
+use actix_http::httpmessage::HttpMessage;
 use awc::error::WsClientError;
 use chrono::Utc;
 use futures::channel::oneshot;
@@ -12,6 +13,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
 use std::fs;
+use std::fs::OpenOptions;
 use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -24,8 +26,6 @@ use ya_client::model::market::{
 };
 use ya_client::web::WebClient;
 use zip::CompressionMethod;
-use std::fs::OpenOptions;
-use actix_http::httpmessage::HttpMessage;
 
 #[derive(Clone)]
 struct DistStorage {
@@ -45,21 +45,30 @@ impl DistSlot {
     async fn download(&self, out_path: &Path) -> anyhow::Result<()> {
         let c = awc::Client::new();
 
-        let mut response = c.get(&self.download_url)
-            .send().await.map_err(|e| anyhow::anyhow!("download json: {}", e))?;
+        let mut response = c
+            .get(&self.download_url)
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("download json: {}", e))?;
 
         let payload = response.take_payload();
-        let mut fs = OpenOptions::new().write(true).create_new(true).open(out_path)?;
-        Ok(payload.for_each(|b| {
-            let bytes = b.unwrap();
-            fs.write_all(bytes.as_ref()).unwrap();
-            future::ready(())
-        }).await)
+        let mut fs = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(out_path)?;
+        Ok(payload
+            .for_each(|b| {
+                let bytes = b.unwrap();
+                fs.write_all(bytes.as_ref()).unwrap();
+                future::ready(())
+            })
+            .await)
     }
 
     async fn download_json<T: DeserializeOwned>(&self) -> anyhow::Result<T> {
         let c = awc::Client::new();
-        let b = c.get(&self.download_url)
+        let b = c
+            .get(&self.download_url)
             .send()
             .await
             .map_err(|e| anyhow::anyhow!("download json: {}", e))?
@@ -483,8 +492,7 @@ async fn process_task(
     let commands_cnt = commands.len();
     let script_text = serde_json::to_string_pretty(&commands)?;
     eprintln!("script=[{}]", script_text);
-    let script =
-        ya_client::model::activity::ExeScriptRequest::new(script_text);
+    let script = ya_client::model::activity::ExeScriptRequest::new(script_text);
 
     let activity_api = client.interface::<ya_client::activity::ActivityRequestorApi>()?;
 
@@ -530,7 +538,7 @@ async fn process_task(
         eprintln!("downloading: {}", output.display());
         slot.download(&output).await?;
     }
-    if let Err(e) =  activity_api.control().destroy_activity(&activity_id).await {
+    if let Err(e) = activity_api.control().destroy_activity(&activity_id).await {
         log::error!("fail to destroy activity: {}", e);
     }
 
