@@ -12,7 +12,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
 use std::fs;
-use std::io::Cursor;
+use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -24,6 +24,8 @@ use ya_client::model::market::{
 };
 use ya_client::web::WebClient;
 use zip::CompressionMethod;
+use std::fs::OpenOptions;
+use actix_http::httpmessage::HttpMessage;
 
 #[derive(Clone)]
 struct DistStorage {
@@ -41,18 +43,31 @@ impl DistSlot {
     }
 
     async fn download(&self, out_path: &Path) -> anyhow::Result<()> {
-        unimplemented!()
+        let c = awc::Client::new();
+
+        let mut response = c.get(&self.download_url)
+            .send().await.map_err(|e| anyhow::anyhow!("download json: {}", e))?;
+
+        let payload = response.take_payload();
+        let mut fs = OpenOptions::new().write(true).create_new(true).open(out_path)?;
+        Ok(payload.for_each(|b| {
+            let bytes = b.unwrap();
+            fs.write_all(bytes.as_ref()).unwrap();
+            future::ready(())
+        }).await)
     }
 
     async fn download_json<T: DeserializeOwned>(&self) -> anyhow::Result<T> {
         let c = awc::Client::new();
-        Ok(c.get(&self.download_url)
+        let b = c.get(&self.download_url)
             .send()
             .await
             .map_err(|e| anyhow::anyhow!("download json: {}", e))?
-            .json()
+            .body()
             .await
-            .map_err(|e| anyhow::anyhow!("download json: {}", e))?)
+            .map_err(|e| anyhow::anyhow!("download json: {}", e))?;
+
+        Ok(serde_json::from_slice(b.as_ref())?)
     }
 }
 
@@ -412,6 +427,7 @@ async fn allocate_funds_for_task(
     Ok(allocation.allocation_id)
 }
 
+#[derive(Debug)]
 struct TaskResult {
     agreement_id: String,
     task_def: TaskDef,
@@ -450,6 +466,7 @@ async fn process_task(
     }}));
     let mut outputs = Vec::new();
     for blob_path in task.outputs() {
+        eprintln!("output={}", blob_path);
         let slot = storage.download_slot().await?;
         commands.push(serde_json::json!({"transfer": {
             "from": format!("container:/out/{}", blob_path),
@@ -464,8 +481,10 @@ async fn process_task(
     }}));
 
     let commands_cnt = commands.len();
+    let script_text = serde_json::to_string_pretty(&commands)?;
+    eprintln!("script=[{}]", script_text);
     let script =
-        ya_client::model::activity::ExeScriptRequest::new(serde_json::to_string_pretty(&commands)?);
+        ya_client::model::activity::ExeScriptRequest::new(script_text);
 
     let activity_api = client.interface::<ya_client::activity::ActivityRequestorApi>()?;
 
@@ -506,8 +525,13 @@ async fn process_task(
 
     // TODO: task output path resolve
     let task_def = output_slot.download_json().await?;
+
     for (slot, output) in outputs {
+        eprintln!("downloading: {}", output.display());
         slot.download(&output).await?;
+    }
+    if let Err(e) =  activity_api.control().destroy_activity(&activity_id).await {
+        log::error!("fail to destroy activity: {}", e);
     }
 
     Ok(TaskResult {
@@ -566,6 +590,7 @@ pub fn run(
         let market_api: ya_client::market::MarketRequestorApi = client.interface()?;
         let a = agreement_producer(&market_api, &my_demand).await?;
         let storage = DistStorage::new(storage_server);
+        let output_tasks = merge_path_ref.join("tasks.json");
         let agreements = futures::future::join_all(tasks.into_iter().map(|t| {
             process_task(
                 storage.clone(),
@@ -577,6 +602,15 @@ pub fn run(
             )
         }))
         .await;
+
+        let mut tasks = Vec::new();
+        for agr in agreements {
+            let result = agr?;
+            eprintln!("result={:?}", result);
+            tasks.push(result.task_def);
+        }
+
+        std::fs::write(output_tasks, serde_json::to_vec_pretty(&tasks)?)?;
 
         Ok::<_, anyhow::Error>(())
     })?;
