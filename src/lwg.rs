@@ -4,7 +4,8 @@ use crate::workdir::WorkDir;
 use actix::prelude::*;
 use actix_http::httpmessage::HttpMessage;
 use awc::error::WsClientError;
-use chrono::Utc;
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::TryFutureExt;
@@ -12,10 +13,12 @@ use gwasm_dispatcher::TaskDef;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
+use std::collections::HashSet;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering::AcqRel;
 use std::sync::Arc;
 use std::time::Duration;
 use wasmtime::wasm::wasm_engine_delete;
@@ -369,6 +372,10 @@ impl Handler<ProcessEvent> for AgreementProducer {
 
                     let requestor_api = self.api.clone();
                     let me = ctx.address();
+                    let slot = match self.pending.pop() {
+                        Some(slot) => slot,
+                        None => return MessageResult(()),
+                    };
                     let _ = ctx.spawn(
                         async move {
                             let _ack = requestor_api
@@ -386,15 +393,9 @@ impl Handler<ProcessEvent> for AgreementProducer {
                                 .await
                                 .unwrap();
                             log::info!("agreement = {} CONFIRMED!", new_agreement_id);
-                            new_agreement_id
+                            let _ = slot.send(new_agreement_id);
                         }
-                        .into_actor(self)
-                        .then(|agreement_id, act, ctx| {
-                            if let Some(mut s) = act.pending.pop() {
-                                s.send(agreement_id);
-                            }
-                            fut::ready(())
-                        }),
+                        .into_actor(self),
                     );
                 }
             }
@@ -422,18 +423,180 @@ async fn agreement_producer(
     Ok(producer.start())
 }
 
+struct PaymentManager {
+    payment_api: ya_client::payment::requestor::RequestorApi,
+    allocation_id: String,
+    total_amount: BigDecimal,
+    valid_agreements: HashSet<String>,
+    last_debit_note_event: DateTime<Utc>,
+    last_invoice_event: DateTime<Utc>,
+}
+
+impl Actor for PaymentManager {
+    type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        self.update_debit_notes(ctx);
+        self.update_invoices(ctx);
+    }
+}
+
+impl PaymentManager {
+    fn update_debit_notes(&mut self, ctx: &mut <PaymentManager as Actor>::Context) {
+        let mut ts = self.last_debit_note_event.clone();
+        let api = self.payment_api.clone();
+
+        let f = async move {
+            let events = api.get_debit_note_events(Some(&ts)).await?;
+            for event in events {
+                log::info!("got debit note: {:?}", event);
+                ts = event.timestamp;
+            }
+            Ok::<_, anyhow::Error>(ts)
+        }
+        .into_actor(self)
+        .then(|ts, this, ctx: &mut Context<Self>| {
+            match ts {
+                Ok(ts) => this.last_debit_note_event = ts,
+                Err(e) => {
+                    log::error!("debit note event error: {}", e);
+                }
+            }
+            ctx.run_later(Duration::from_secs(10), |this, ctx| {
+                this.update_debit_notes(ctx)
+            });
+            fut::ready(())
+        });
+
+        let _ = ctx.spawn(f);
+    }
+
+    fn update_invoices(&mut self, ctx: &mut <PaymentManager as Actor>::Context) {
+        let mut ts = self.last_invoice_event.clone();
+        let api = self.payment_api.clone();
+
+        let f = async move {
+            let events = api.get_invoice_events(Some(&ts)).await?;
+            let mut new_invoices = Vec::new();
+            for event in events {
+                log::info!("got invoice: {:?}", event);
+                if event.event_type == model::payment::EventType::Received {
+                    let invoice = api.get_invoice(&event.invoice_id).await?;
+                    new_invoices.push(invoice);
+                }
+                ts = event.timestamp;
+            }
+            Ok::<_, anyhow::Error>((ts, new_invoices))
+        }
+        .into_actor(self)
+        .then(
+            |result: Result<(_, Vec<model::payment::Invoice>), _>,
+             this,
+             ctx: &mut Context<Self>| {
+                match result {
+                    Ok((ts, invoices)) => {
+                        this.last_invoice_event = ts;
+                        for invoice in invoices {
+                            let api = this.payment_api.clone();
+
+                            if this.valid_agreements.remove(&invoice.agreement_id) {
+                                let invoice_id = invoice.invoice_id;
+
+                                let acceptance = model::payment::Acceptance {
+                                    total_amount_accepted: invoice.amount.clone(),
+                                    allocation_id: this.allocation_id.clone(),
+                                };
+                                let _ = Arbiter::spawn(async move {
+                                    if let Err(e) =
+                                        api.accept_invoice(&invoice_id, &acceptance).await
+                                    {
+                                        log::error!("invoice {} accept error: {}", invoice_id, e)
+                                    }
+                                });
+                            } else {
+                                let invoice_id = invoice.invoice_id;
+
+                                let spec = model::payment::Rejection {
+                                    rejection_reason:
+                                        model::payment::RejectionReason::UnsolicitedService,
+                                    total_amount_accepted: 0.into(),
+                                    message: Some("invoice received before results".to_string()),
+                                };
+                                let _ = Arbiter::spawn(async move {
+                                    api.reject_invoice(&invoice_id, &spec).await;
+                                });
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("invoice processing error: {}", e);
+                    }
+                }
+                ctx.run_later(Duration::from_secs(10), |this, ctx| {
+                    this.update_invoices(ctx)
+                });
+                fut::ready(())
+            },
+        );
+
+        let _ = ctx.spawn(f);
+    }
+}
+
+struct AcceptAgreement {
+    agreement_id: String,
+}
+
+impl Message for AcceptAgreement {
+    type Result = anyhow::Result<()>;
+}
+
+impl Handler<AcceptAgreement> for PaymentManager {
+    type Result = anyhow::Result<()>;
+
+    fn handle(&mut self, msg: AcceptAgreement, ctx: &mut Self::Context) -> Self::Result {
+        self.valid_agreements.insert(msg.agreement_id);
+        Ok(())
+    }
+}
+
+struct GetPending;
+
+impl Message for GetPending {
+    type Result = usize;
+}
+
+impl Handler<GetPending> for PaymentManager {
+    type Result = MessageResult<GetPending>;
+
+    fn handle(&mut self, msg: GetPending, ctx: &mut Self::Context) -> Self::Result {
+        MessageResult(self.valid_agreements.len())
+    }
+}
+
 async fn allocate_funds_for_task(
     payment_api: &ya_client::payment::requestor::RequestorApi,
     n_tasks: usize,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Addr<PaymentManager>> {
+    let now = Utc::now();
+    let total_amount: BigDecimal = ((n_tasks * 8) as u64).into();
     let new_allocation = model::payment::NewAllocation {
-        total_amount: ((n_tasks * 2) as u64).into(),
+        total_amount: total_amount.clone(),
         timeout: None,
         make_deposit: false,
     };
     let allocation = payment_api.create_allocation(&new_allocation).await?;
     log::info!("Allocated {} GNT.", &allocation.total_amount);
-    Ok(allocation.allocation_id)
+
+    let manager = PaymentManager {
+        payment_api: payment_api.clone(),
+        allocation_id: allocation.allocation_id,
+        total_amount,
+        valid_agreements: Default::default(),
+        last_debit_note_event: now.clone(),
+        last_invoice_event: now,
+    };
+    Ok(manager.start())
 }
 
 #[derive(Debug)]
@@ -445,6 +608,7 @@ struct TaskResult {
 async fn process_task(
     storage: DistStorage,
     client: WebClient,
+    p: Addr<PaymentManager>,
     a: Addr<AgreementProducer>,
     output_path: PathBuf,
     merge_path: PathBuf,
@@ -519,7 +683,7 @@ async fn process_task(
         log::info!("activity {} state: {:?}", activity_id, state);
         let results = activity_api
             .control()
-            .get_exec_batch_results(&activity_id, &batch_id, Some(7))
+            .get_exec_batch_results(&activity_id, &batch_id, Some(60))
             .await?;
 
         log::info!("batch results {:?}", results);
@@ -533,6 +697,12 @@ async fn process_task(
 
     // TODO: task output path resolve
     let task_def = output_slot.download_json().await?;
+
+    let _err = p
+        .send(AcceptAgreement {
+            agreement_id: agreement_id.clone(),
+        })
+        .await;
 
     for (slot, output) in outputs {
         eprintln!("downloading: {}", output.display());
@@ -599,10 +769,13 @@ pub fn run(
         let a = agreement_producer(&market_api, &my_demand).await?;
         let storage = DistStorage::new(storage_server);
         let output_tasks = merge_path_ref.join("tasks.json");
+        let payment_man = allocate_funds_for_task(&payment_api, tasks.len()).await?;
+
         let agreements = futures::future::join_all(tasks.into_iter().map(|t| {
             process_task(
                 storage.clone(),
                 client.clone(),
+                payment_man.clone(),
                 a.clone(),
                 task_output_path.clone(),
                 merge_path_ref.clone(),
@@ -619,6 +792,14 @@ pub fn run(
         }
 
         std::fs::write(output_tasks, serde_json::to_vec_pretty(&tasks)?)?;
+        loop {
+            let pending = payment_man.send(GetPending).await?;
+            if pending == 0 {
+                break;
+            }
+            log::warn!("still {} pending payments", pending);
+            tokio::time::delay_for(Duration::from_millis(700)).await;
+        }
 
         Ok::<_, anyhow::Error>(())
     })?;
