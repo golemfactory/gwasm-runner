@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::local_runner::run_local_code;
 use crate::wasm_engine::Engine;
 use crate::workdir::WorkDir;
@@ -5,7 +7,7 @@ use actix::prelude::*;
 use actix_http::httpmessage::HttpMessage;
 use awc::error::WsClientError;
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::TryFutureExt;
@@ -14,6 +16,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
 use std::collections::HashSet;
+use std::convert::TryInto;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Write};
@@ -179,15 +182,31 @@ fn build_image(wasm_path: &Path) -> anyhow::Result<Vec<u8>> {
         mount_points: vec![MountPoint::Ro("in".into()), MountPoint::Rw("out".into())],
     };
 
+    let mtime: chrono::DateTime<Utc> = wasm_path.metadata()?.modified()?.into();
+
+    let mtime = zip::DateTime::from_date_and_time(
+        mtime.year().try_into()?,
+        mtime.month().try_into()?,
+        mtime.day().try_into()?,
+        mtime.hour().try_into()?,
+        mtime.minute().try_into()?,
+        mtime.second().try_into()?,
+    )
+    .unwrap();
+
     let mut zw = zip::ZipWriter::new(Cursor::new(Vec::new()));
     zw.start_file(
         "manifest.json",
-        zip::write::FileOptions::default().compression_method(CompressionMethod::Stored),
+        zip::write::FileOptions::default()
+            .compression_method(CompressionMethod::Stored)
+            .last_modified_time(mtime.clone()),
     )?;
     serde_json::to_writer_pretty(&mut zw, &m)?;
     zw.start_file(
         name_ws.as_ref(),
-        zip::write::FileOptions::default().compression_method(CompressionMethod::Bzip2),
+        zip::write::FileOptions::default()
+            .compression_method(CompressionMethod::Bzip2)
+            .last_modified_time(mtime.clone()),
     )?;
     std::io::copy(
         &mut fs::OpenOptions::new().read(true).open(wasm_path)?,
@@ -268,10 +287,16 @@ impl Actor for AgreementProducer {
 
                 let _ = ctx.spawn(
                     async move {
-                        let events = requestor_api
+                        let events = match requestor_api
                             .collect(&subscription_id, Some(8.0), Some(5))
                             .await
-                            .unwrap();
+                        {
+                            Ok(v) => v,
+                            Err(e) => {
+                                log::error!("fail to get market events: {}", e);
+                                return;
+                            }
+                        };
                         for event in events {
                             let _ = me.send(ProcessEvent(event)).await;
                         }
@@ -347,15 +372,33 @@ impl Handler<ProcessEvent> for AgreementProducer {
                         );
                         return MessageResult(());
                     }
-                    let bespoke_proposal = proposal.counter_demand(self.my_demand.clone()).unwrap();
+                    let bespoke_proposal = match proposal.counter_demand(self.my_demand.clone()) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            log::error!(
+                                "problem with proposal: {:?} from {:?}: {}",
+                                proposal.proposal_id,
+                                proposal.issuer_id,
+                                e
+                            );
+                            return MessageResult(());
+                        }
+                    };
+                    let provider_id = proposal.issuer_id.clone().unwrap_or_default();
                     let requestor_api = self.api.clone();
                     let subscription_id = self.subscription_id.clone();
                     let f = async move {
-                        let new_proposal_id = requestor_api
+                        let new_proposal_id = match requestor_api
                             .counter_proposal(&bespoke_proposal, &subscription_id)
                             .await
-                            .unwrap();
-                        log::debug!("new proposal id = {}", new_proposal_id);
+                        {
+                            Ok(v) => v,
+                            Err(e) => {
+                                log::error!("counter_proposal fail: {}", e);
+                                return;
+                            }
+                        };
+                        log::debug!("new proposal id = {} for: {}", new_proposal_id, provider_id);
                     };
                     let _ = ctx.spawn(f.into_actor(self));
                 } else {
@@ -372,30 +415,39 @@ impl Handler<ProcessEvent> for AgreementProducer {
 
                     let requestor_api = self.api.clone();
                     let me = ctx.address();
-                    let slot = match self.pending.pop() {
+                    let mut slot = match self.pending.pop() {
                         Some(slot) => slot,
                         None => return MessageResult(()),
                     };
                     let _ = ctx.spawn(
                         async move {
-                            let _ack = requestor_api
-                                .create_agreement(&new_agreement)
-                                .await
-                                .unwrap();
-                            log::info!("confirm agreement = {}", new_agreement_id);
-                            requestor_api
-                                .confirm_agreement(&new_agreement_id)
-                                .await
-                                .unwrap();
-                            log::info!("wait for agreement = {}", new_agreement_id);
-                            requestor_api
-                                .wait_for_approval(&new_agreement_id, Some(7.879))
-                                .await
-                                .unwrap();
-                            log::info!("agreement = {} CONFIRMED!", new_agreement_id);
-                            let _ = slot.send(new_agreement_id);
+                            if let Err(e) = async {
+                                let _ack = requestor_api.create_agreement(&new_agreement).await?;
+                                log::info!("confirm agreement = {}", new_agreement_id);
+                                requestor_api.confirm_agreement(&new_agreement_id).await?;
+                                log::info!("wait for agreement = {}", new_agreement_id);
+                                requestor_api
+                                    .wait_for_approval(&new_agreement_id, Some(7.879))
+                                    .await?;
+                                Ok::<_, anyhow::Error>(())
+                            }
+                            .await
+                            {
+                                log::error!("fail to negotiate agreement: {}", new_agreement_id);
+                                Err(slot)
+                            } else {
+                                log::info!("agreement = {} CONFIRMED!", new_agreement_id);
+                                let _ = slot.send(new_agreement_id);
+                                Ok(())
+                            }
                         }
-                        .into_actor(self),
+                        .into_actor(self)
+                        .then(|r, act, _ctx| {
+                            if let Err(slot) = r {
+                                act.pending.push(slot);
+                            }
+                            fut::ready(())
+                        }),
                     );
                 }
             }
@@ -523,7 +575,9 @@ impl PaymentManager {
                                     message: Some("invoice received before results".to_string()),
                                 };
                                 let _ = Arbiter::spawn(async move {
-                                    api.reject_invoice(&invoice_id, &spec).await;
+                                    if let Err(e) = api.reject_invoice(&invoice_id, &spec).await {
+                                        log::error!("invoice: {} reject error: {}", invoice_id, e);
+                                    }
                                 });
                             }
                         }
@@ -655,11 +709,46 @@ async fn process_task(
 
     let commands_cnt = commands.len();
     let script_text = serde_json::to_string_pretty(&commands)?;
-    eprintln!("script=[{}]", script_text);
+    log::trace!("script=[{}]", script_text);
     let script = ya_client::model::activity::ExeScriptRequest::new(script_text);
 
-    let activity_api = client.interface::<ya_client::activity::ActivityRequestorApi>()?;
+    loop {
+        match try_process_task(
+            commands_cnt,
+            &script,
+            &output_slot,
+            &outputs,
+            client.clone(),
+            p.clone(),
+            a.clone(),
+            output_path.clone(),
+            merge_path.clone(),
+            task.clone(),
+        )
+        .await
+        {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                log::error!("fail to process subtask: {}", e);
+                log::info!("retry");
+            }
+        }
+    }
+}
 
+async fn try_process_task(
+    commands_cnt: usize,
+    script: &ya_client::model::activity::ExeScriptRequest,
+    output_slot: &DistSlot,
+    outputs: &Vec<(DistSlot, PathBuf)>,
+    client: WebClient,
+    p: Addr<PaymentManager>,
+    a: Addr<AgreementProducer>,
+    output_path: PathBuf,
+    merge_path: PathBuf,
+    task: TaskDef,
+) -> anyhow::Result<TaskResult> {
+    let activity_api = client.interface::<ya_client::activity::ActivityRequestorApi>()?;
     let agreement_id = a.send(NewAgreement).await??;
     let activity_id = match activity_api.control().create_activity(&agreement_id).await {
         Ok(id) => id,

@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use anyhow::{anyhow, bail, Result as Fallible};
 use app_dirs::{app_dir, AppDataType::UserCache, AppInfo};
 use std::fs;

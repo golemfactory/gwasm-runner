@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::path::Path;
 use std::sync::Arc;
 
@@ -96,7 +97,7 @@ mod wasmtime {
             &mut self,
             src: PathRef,
             des: &str,
-            mode: Mode,
+            _mode: Mode,
         ) -> Result<()> {
             self.mounts.push((
                 des.to_owned(),
@@ -128,6 +129,16 @@ mod wasmtime {
                     &[("RUST_BACKTRACE".to_string(), "full".to_string())],
                 )?;
                 deps.insert("wasi_unstable", snapshot0);
+            }
+
+            if modules.remove("wasi_snapshot_preview1") {
+                let runtime = wasmtime_wasi::create_wasi_instance(
+                    &self.store,
+                    self.mounts.as_ref(),
+                    self.args.as_ref(),
+                    &[("RUST_BACKTRACE".to_string(), "full".to_string())],
+                )?;
+                deps.insert("wasi_snapshot_preview1", runtime);
             }
 
             if !modules.is_empty() {

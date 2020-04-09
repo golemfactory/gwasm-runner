@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::wasm_engine::{Engine, Mode, Sandbox};
 use crate::workdir::WorkDir;
 use anyhow::{anyhow, bail, Result as Fallible};
@@ -6,7 +8,6 @@ use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::path::{Component, Path, PathBuf};
 
-#[allow(unused_mut, unused_variables)]
 pub fn run_local_code<E: Engine>(
     engine: E,
     wasm_path: &Path,
