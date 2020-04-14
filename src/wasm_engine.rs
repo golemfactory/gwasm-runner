@@ -111,7 +111,7 @@ mod wasmtime {
         }
 
         fn run(self, code: Self::Code) -> Result<()> {
-            eprintln!("starting: [{:?}] [{:?}]", self.mounts, self.args);
+            log::debug!("starting: args=[{:?}]; mounts=[{:?}] ", self.args, self.mounts);
             let module = code.module;
 
             let mut modules = module
@@ -157,7 +157,7 @@ mod wasmtime {
                 })
                 .collect::<Result<Vec<_>>>()?;
 
-            eprintln!("resolved={}", externs.len());
+            log::debug!("resolved={}", externs.len());
 
             /*
                         let wasi = wasmtime_wasi::create_wasi_instance(

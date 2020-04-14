@@ -223,7 +223,7 @@ async fn push_image(
     let c = awc::Client::new();
 
     let hex = format!("{:x}", <sha3::Sha3_224 as Digest>::digest(image.as_slice()));
-    let download_url = format!("{}/app-{}.yimg", hub_url, &hex[0..8]);
+    let download_url = format!("{}app-{}.yimg", hub_url, &hex[0..8]);
     let upload_url = format!("{}upload/app-{}.yimg", hub_url, &hex[0..8]);
     let response = c
         .put(&upload_url)
@@ -359,11 +359,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                 event_date: _,
                 proposal,
             } => {
-                log::debug!(
-                    "processing ProposalEvent [{:?}] with state: {:?}",
-                    proposal.proposal_id,
-                    proposal.state
-                );
+                log::info!("Processing Offer Proposal... [state: {:?}]", proposal.state().unwrap());
                 if proposal.state.unwrap_or(ProposalState::Initial) == ProposalState::Initial {
                     if proposal.prev_proposal_id.is_some() {
                         log::error!(
@@ -384,10 +380,11 @@ impl Handler<ProcessEvent> for AgreementProducer {
                             return MessageResult(());
                         }
                     };
-                    let provider_id = proposal.issuer_id.clone().unwrap_or_default();
+                    let provider_id = proposal.issuer_id().unwrap().clone();
                     let requestor_api = self.api.clone();
                     let subscription_id = self.subscription_id.clone();
                     let f = async move {
+                        log::info!("Accepting Offer Proposal from {}", provider_id);
                         let new_proposal_id = match requestor_api
                             .counter_proposal(&bespoke_proposal, &subscription_id)
                             .await
@@ -407,6 +404,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                         return MessageResult(());
                     }
                     let new_agreement_id = proposal.proposal_id().unwrap().clone();
+                    let provider_id = proposal.issuer_id().unwrap().clone();
                     let new_agreement = AgreementProposal::new(
                         new_agreement_id.clone(),
                         Utc::now() + chrono::Duration::hours(2),
@@ -423,9 +421,9 @@ impl Handler<ProcessEvent> for AgreementProducer {
                         async move {
                             if let Err(e) = async {
                                 let _ack = requestor_api.create_agreement(&new_agreement).await?;
-                                log::info!("confirm agreement = {}", new_agreement_id);
+                                log::debug!("confirm agreement = {}", new_agreement_id);
                                 requestor_api.confirm_agreement(&new_agreement_id).await?;
-                                log::info!("wait for agreement = {}", new_agreement_id);
+                                log::debug!("wait for agreement = {}", new_agreement_id);
                                 requestor_api
                                     .wait_for_approval(&new_agreement_id, Some(7.879))
                                     .await?;
@@ -436,7 +434,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                                 log::error!("fail to negotiate agreement: {}", new_agreement_id);
                                 Err(slot)
                             } else {
-                                log::info!("agreement = {} CONFIRMED!", new_agreement_id);
+                                log::info!("Agreement negotiated and confirmed with {}!", provider_id);
                                 let _ = slot.send(new_agreement_id);
                                 Ok(())
                             }
@@ -464,7 +462,7 @@ async fn agreement_producer(
     demand: &Demand,
 ) -> anyhow::Result<Addr<AgreementProducer>> {
     let subscription_id = market_api.subscribe(demand).await?;
-    log::info!("sub_id={}", subscription_id);
+    log::info!("Subscribed to Market API ( id : {} )", subscription_id);
     let producer = AgreementProducer {
         subscription_id,
         api: market_api.clone(),
@@ -479,6 +477,7 @@ struct PaymentManager {
     payment_api: ya_client::payment::requestor::RequestorApi,
     allocation_id: String,
     total_amount: BigDecimal,
+    amount_paid: BigDecimal,
     valid_agreements: HashSet<String>,
     last_debit_note_event: DateTime<Utc>,
     last_invoice_event: DateTime<Utc>,
@@ -501,7 +500,7 @@ impl PaymentManager {
         let f = async move {
             let events = api.get_debit_note_events(Some(&ts)).await?;
             for event in events {
-                log::info!("got debit note: {:?}", event);
+                log::debug!("got debit note: {:?}", event);
                 ts = event.timestamp;
             }
             Ok::<_, anyhow::Error>(ts)
@@ -531,7 +530,7 @@ impl PaymentManager {
             let events = api.get_invoice_events(Some(&ts)).await?;
             let mut new_invoices = Vec::new();
             for event in events {
-                log::info!("got invoice: {:?}", event);
+                log::debug!("Got invoice: {:?}", event);
                 if event.event_type == model::payment::EventType::Received {
                     let invoice = api.get_invoice(&event.invoice_id).await?;
                     new_invoices.push(invoice);
@@ -553,7 +552,8 @@ impl PaymentManager {
 
                             if this.valid_agreements.remove(&invoice.agreement_id) {
                                 let invoice_id = invoice.invoice_id;
-
+                                log::info!("Accepting invoice amounted {} GNT, issuer: {}", invoice.amount, invoice.issuer_id);
+                                this.amount_paid += invoice.amount.clone();
                                 let acceptance = model::payment::Acceptance {
                                     total_amount_accepted: invoice.amount.clone(),
                                     allocation_id: this.allocation_id.clone(),
@@ -628,6 +628,26 @@ impl Handler<GetPending> for PaymentManager {
     }
 }
 
+struct ReleaseAllocation;
+
+impl Message for ReleaseAllocation {
+    type Result = anyhow::Result<()>;
+}
+
+impl Handler<ReleaseAllocation> for PaymentManager {
+    type Result = anyhow::Result<()>;
+
+    fn handle(&mut self, msg: ReleaseAllocation, ctx: &mut Self::Context) -> Self::Result {
+        let api = self.payment_api.clone();
+        let allocation_id = self.allocation_id.clone();
+        let _ = ctx.spawn(async move {
+            log::info!("Releasing allocation");
+            api.release_allocation(&allocation_id).await;
+        }.into_actor(self));
+        Ok(())
+    }
+}
+
 async fn allocate_funds_for_task(
     payment_api: &ya_client::payment::requestor::RequestorApi,
     n_tasks: usize,
@@ -646,6 +666,7 @@ async fn allocate_funds_for_task(
         payment_api: payment_api.clone(),
         allocation_id: allocation.allocation_id,
         total_amount,
+        amount_paid: 0.into(),
         valid_agreements: Default::default(),
         last_debit_note_event: now.clone(),
         last_invoice_event: now,
@@ -693,7 +714,7 @@ async fn process_task(
     }}));
     let mut outputs = Vec::new();
     for blob_path in task.outputs() {
-        eprintln!("output={}", blob_path);
+        log::debug!("output blob filename={}", blob_path);
         let slot = storage.download_slot().await?;
         commands.push(serde_json::json!({"transfer": {
             "from": format!("container:/out/{}", blob_path),
@@ -758,24 +779,26 @@ async fn try_process_task(
         }
     };
 
+    log::info!("Activity created. Sending ExeScript... [{}]", activity_id);
     let batch_id = activity_api
         .control()
         .exec(script.clone(), &activity_id)
         .await?;
+
     loop {
         let state = activity_api.state().get_state(&activity_id).await?;
         if !state.alive() {
-            log::info!("activity {} is NOT ALIVE any more.", activity_id);
+            log::error!("activity {} is NOT ALIVE any more.", activity_id);
             break;
         }
 
-        log::info!("activity {} state: {:?}", activity_id, state);
+        log::info!("Waiting for ExeScript results...   [{}]", activity_id);
         let results = activity_api
             .control()
             .get_exec_batch_results(&activity_id, &batch_id, Some(60))
             .await?;
 
-        log::info!("batch results {:?}", results);
+        log::debug!("ExeScript batch results: {:#?}", results);
 
         if results.len() >= commands_cnt {
             break;
@@ -794,13 +817,15 @@ async fn try_process_task(
         .await;
 
     for (slot, output) in outputs {
-        eprintln!("downloading: {}", output.display());
+        log::info!("ExeScript finished. Downloading result...   [{}]", activity_id);
+        log::debug!("Downloading: {}", output.display());
         slot.download(&output).await?;
     }
     if let Err(e) = activity_api.control().destroy_activity(&activity_id).await {
         log::error!("fail to destroy activity: {}", e);
     }
 
+    log::info!("Task finished.   [{}]", activity_id);
     Ok(TaskResult {
         agreement_id,
         task_def,
@@ -825,6 +850,7 @@ pub fn run(
     let mut w = WorkDir::new("lwg")?;
     let image = build_image(&wasm_path)?;
     //let hub_url: Arc<str> = format!("http://{}", hub_addr).into();
+    log::info!("Locally splitting work into tasks");
     let output_path = w.split_output()?;
     {
         let mut split_args = Vec::new();
@@ -836,9 +862,10 @@ pub fn run(
 
     let tasks_path = output_path.join("tasks.json");
 
-    eprintln!("reading: {}", tasks_path.display());
+    log::debug!("reading: {}", tasks_path.display());
     let tasks: Vec<gwasm_dispatcher::TaskDef> =
         serde_json::from_reader(fs::OpenOptions::new().read(true).open(tasks_path)?)?;
+    log::info!("Created {} tasks", tasks.len());
 
     let merge_path = w.merge_path()?;
     let output_file = merge_path.join("tasks.json");
@@ -850,7 +877,7 @@ pub fn run(
     let r = sys.block_on(async move {
         // TODO: Catch error
         let image = push_image(storage_server.clone(), image).await.unwrap();
-        eprintln!("image={}", image);
+        log::info!("Binary image uploaded: {}", image);
 
         let node_name = "test1";
         let my_demand = build_demand(node_name, &image);
@@ -860,7 +887,7 @@ pub fn run(
         let output_tasks = merge_path_ref.join("tasks.json");
         let payment_man = allocate_funds_for_task(&payment_api, tasks.len()).await?;
 
-        let agreements = futures::future::join_all(tasks.into_iter().map(|t| {
+        let task_results = futures::future::join_all(tasks.into_iter().map(|t| {
             process_task(
                 storage.clone(),
                 client.clone(),
@@ -874,9 +901,8 @@ pub fn run(
         .await;
 
         let mut tasks = Vec::new();
-        for agr in agreements {
-            let result = agr?;
-            eprintln!("result={:?}", result);
+        for res in task_results {
+            let result = res?;
             tasks.push(result.task_def);
         }
 
@@ -889,6 +915,8 @@ pub fn run(
             log::warn!("still {} pending payments", pending);
             tokio::time::delay_for(Duration::from_millis(700)).await;
         }
+        payment_man.send(ReleaseAllocation).await?;
+        log::info!("Work done and paid. Enjoy results.");
 
         Ok::<_, anyhow::Error>(())
     })?;
