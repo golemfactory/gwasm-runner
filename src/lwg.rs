@@ -508,7 +508,7 @@ async fn try_process_task(
         log::info!("activity {} state: {:?}", activity_id, state);
         let results = match activity_api
             .control()
-            .get_exec_batch_results(&activity_id, &batch_id, Some(60))
+            .get_exec_batch_results(&activity_id, &batch_id, Some(60.), None)
             .await
         {
             Ok(v) => v,
