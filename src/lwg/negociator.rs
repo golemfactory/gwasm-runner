@@ -27,14 +27,12 @@ impl Actor for AgreementProducer {
         log::info!("Stopping");
         let subscription_id = self.subscription_id.clone();
         let api = self.api.clone();
-        let _ = Arbiter::spawn(
-            async move {
-                if let Err(e) = api.unsubscribe(&subscription_id).await {
-                    log::error!("unsubscribe error: {}", e);
-                }
-                log::info!("unsubscribe done");
-            });
-
+        let _ = Arbiter::spawn(async move {
+            if let Err(e) = api.unsubscribe(&subscription_id).await {
+                log::error!("unsubscribe error: {}", e);
+            }
+            log::info!("unsubscribe done");
+        });
     }
 }
 
@@ -114,11 +112,11 @@ impl Handler<ProcessEvent> for AgreementProducer {
                 event_date: _,
                 proposal,
             } => {
-                log::debug!(
-                    "processing ProposalEvent [{:?}] with state: {:?}",
-                    proposal.proposal_id,
-                    proposal.state
+                log::info!(
+                    "Processing Offer Proposal... [state: {:?}]",
+                    proposal.state().unwrap()
                 );
+
                 if proposal.state.unwrap_or(ProposalState::Initial) == ProposalState::Initial {
                     if proposal.prev_proposal_id.is_some() {
                         log::error!(
@@ -143,6 +141,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                     let requestor_api = self.api.clone();
                     let subscription_id = self.subscription_id.clone();
                     let f = async move {
+                        log::info!("Accepting Offer Proposal from {}", provider_id);
                         let new_proposal_id = match requestor_api
                             .counter_proposal(&bespoke_proposal, &subscription_id)
                             .await
@@ -162,6 +161,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                         return MessageResult(());
                     }
                     let new_agreement_id = proposal.proposal_id().unwrap().clone();
+                    let provider_id = proposal.issuer_id().unwrap().clone();
                     let new_agreement = AgreementProposal::new(
                         new_agreement_id.clone(),
                         Utc::now() + chrono::Duration::hours(2),
@@ -178,9 +178,9 @@ impl Handler<ProcessEvent> for AgreementProducer {
                         async move {
                             if let Err(e) = async {
                                 let _ack = requestor_api.create_agreement(&new_agreement).await?;
-                                log::info!("confirm agreement = {}", new_agreement_id);
+                                log::debug!("confirm agreement = {}", new_agreement_id);
                                 requestor_api.confirm_agreement(&new_agreement_id).await?;
-                                log::info!("wait for agreement = {}", new_agreement_id);
+                                log::debug!("wait for agreement = {}", new_agreement_id);
                                 requestor_api
                                     .wait_for_approval(&new_agreement_id, Some(7.879))
                                     .await?;
@@ -188,10 +188,17 @@ impl Handler<ProcessEvent> for AgreementProducer {
                             }
                             .await
                             {
-                                log::error!("fail to negotiate agreement: {}", new_agreement_id);
+                                log::error!(
+                                    "fail to negotiate agreement: {} from {}",
+                                    new_agreement_id,
+                                    provider_id
+                                );
                                 Err(slot)
                             } else {
-                                log::info!("agreement = {} CONFIRMED!", new_agreement_id);
+                                log::info!(
+                                    "Agreement negotiated and confirmed with {}!",
+                                    provider_id
+                                );
                                 let _ = slot.send(new_agreement_id);
                                 Ok(())
                             }
@@ -234,7 +241,7 @@ pub async fn agreement_producer(
     demand: &Demand,
 ) -> anyhow::Result<Addr<AgreementProducer>> {
     let subscription_id = market_api.subscribe(demand).await?;
-    log::info!("sub_id={}", subscription_id);
+    log::info!("Subscribed to Market API ( id : {} )", subscription_id);
     let producer = AgreementProducer {
         subscription_id,
         api: market_api.clone(),
