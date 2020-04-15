@@ -315,6 +315,7 @@ impl Actor for AgreementProducer {
                 if let Err(e) = api.unsubscribe(&subscription_id).await {
                     log::error!("unsubscribe error: {}", e);
                 }
+                log::info!("Unsubscribed from Market API ( id : {} )", subscription_id);
             }
             .into_actor(self),
         );
@@ -384,7 +385,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                     let requestor_api = self.api.clone();
                     let subscription_id = self.subscription_id.clone();
                     let f = async move {
-                        log::info!("Accepting Offer Proposal from {}", provider_id);
+                        log::info!("Accepting Offer Proposal from {}..", &provider_id[..7]);
                         let new_proposal_id = match requestor_api
                             .counter_proposal(&bespoke_proposal, &subscription_id)
                             .await
@@ -434,7 +435,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                                 log::error!("fail to negotiate agreement: {}", new_agreement_id);
                                 Err(slot)
                             } else {
-                                log::info!("Agreement negotiated and confirmed with {}!", provider_id);
+                                log::info!("Agreement negotiated and confirmed with {}..!", &provider_id[..7]);
                                 let _ = slot.send(new_agreement_id);
                                 Ok(())
                             }
@@ -461,6 +462,7 @@ async fn agreement_producer(
     market_api: &MarketRequestorApi,
     demand: &Demand,
 ) -> anyhow::Result<Addr<AgreementProducer>> {
+    log::info!("My demand: {:#?}", demand);
     let subscription_id = market_api.subscribe(demand).await?;
     log::info!("Subscribed to Market API ( id : {} )", subscription_id);
     let producer = AgreementProducer {
@@ -552,7 +554,7 @@ impl PaymentManager {
 
                             if this.valid_agreements.remove(&invoice.agreement_id) {
                                 let invoice_id = invoice.invoice_id;
-                                log::info!("Accepting invoice amounted {} GNT, issuer: {}", invoice.amount, invoice.issuer_id);
+                                log::info!("Accepting invoice amounted {:.2} GNT, issuer: {}..", invoice.amount, &invoice.issuer_id[..7]);
                                 this.amount_paid += invoice.amount.clone();
                                 let acceptance = model::payment::Acceptance {
                                     total_amount_accepted: invoice.amount.clone(),
@@ -640,9 +642,18 @@ impl Handler<ReleaseAllocation> for PaymentManager {
     fn handle(&mut self, msg: ReleaseAllocation, ctx: &mut Self::Context) -> Self::Result {
         let api = self.payment_api.clone();
         let allocation_id = self.allocation_id.clone();
+        log::info!("Paid in total: {:.2} GNT", self.amount_paid);
         let _ = ctx.spawn(async move {
-            log::info!("Releasing allocation");
-            api.release_allocation(&allocation_id).await;
+            log::info!("Releasing allocation ...");
+            // TODO: release alocation currently does not work correctly
+//            let allocation = api.get_allocation(&allocation_id).await.unwrap();
+//            log::info!(
+//                "[ spent {:.2} GNT, left {:.2} GNT ]",
+//                allocation.spent_amount,
+//                allocation.remaining_amount
+//            );
+//            api.release_allocation(&allocation_id).await;
+//            log::info!("Allocation released.");
         }.into_actor(self));
         Ok(())
     }
@@ -660,7 +671,7 @@ async fn allocate_funds_for_task(
         make_deposit: false,
     };
     let allocation = payment_api.create_allocation(&new_allocation).await?;
-    log::info!("Allocated {} GNT.", &allocation.total_amount);
+    log::info!("Allocated {:.2} GNT.", &allocation.total_amount);
 
     let manager = PaymentManager {
         payment_api: payment_api.clone(),
@@ -779,7 +790,7 @@ async fn try_process_task(
         }
     };
 
-    log::info!("Activity created. Sending ExeScript... [{}]", activity_id);
+    log::info!("Activity created. Sending ExeScript... [{}..]", &activity_id[..7]);
     let batch_id = activity_api
         .control()
         .exec(script.clone(), &activity_id)
@@ -792,7 +803,7 @@ async fn try_process_task(
             break;
         }
 
-        log::info!("Waiting for ExeScript results...   [{}]", activity_id);
+        log::info!("Waiting for ExeScript results...   [{}..]", &activity_id[..7]);
         let results = activity_api
             .control()
             .get_exec_batch_results(&activity_id, &batch_id, Some(60))
@@ -817,7 +828,7 @@ async fn try_process_task(
         .await;
 
     for (slot, output) in outputs {
-        log::info!("ExeScript finished. Downloading result...   [{}]", activity_id);
+        log::info!("ExeScript finished. Downloading result...   [{}..]", &activity_id[..7]);
         log::debug!("Downloading: {}", output.display());
         slot.download(&output).await?;
     }
@@ -825,7 +836,7 @@ async fn try_process_task(
         log::error!("fail to destroy activity: {}", e);
     }
 
-    log::info!("Task finished.   [{}]", activity_id);
+    log::info!("Task finished.   [{}..]", &activity_id[..7]);
     Ok(TaskResult {
         agreement_id,
         task_def,
@@ -850,9 +861,9 @@ pub fn run(
     let mut w = WorkDir::new("lwg")?;
     let image = build_image(&wasm_path)?;
     //let hub_url: Arc<str> = format!("http://{}", hub_addr).into();
-    log::info!("Locally splitting work into tasks");
     let output_path = w.split_output()?;
     {
+        log::info!("Locally splitting work into tasks");
         let mut split_args = Vec::new();
         split_args.push("split".to_owned());
         split_args.push("/task_dir/".to_owned());
@@ -915,13 +926,14 @@ pub fn run(
             log::warn!("still {} pending payments", pending);
             tokio::time::delay_for(Duration::from_millis(700)).await;
         }
+        log::info!("All payments done.");
         payment_man.send(ReleaseAllocation).await?;
-        log::info!("Work done and paid. Enjoy results.");
 
         Ok::<_, anyhow::Error>(())
     })?;
 
     {
+        log::info!("Locally merging task results...");
         let mut merge_args = Vec::new();
         merge_args.push("merge".to_owned());
         merge_args.push("/task_dir/split/tasks.json".to_owned());
@@ -935,6 +947,7 @@ pub fn run(
             merge_args,
         )?;
     }
+    log::info!("Work done. Enjoy results.");
 
     Ok(())
 }
