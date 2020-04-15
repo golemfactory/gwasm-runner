@@ -14,11 +14,9 @@ mod brass_task;
 #[cfg(feature = "with-gu-mode")]
 mod gu_runner;
 mod local_runner;
-
+mod lwg;
 mod wasm_engine;
 mod workdir;
-
-mod lwg;
 
 #[cfg(feature = "with-brass-mode")]
 use brass_runner::run_on_brass;
