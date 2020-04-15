@@ -242,18 +242,8 @@ fn build_demand(node_name: &str, wasm_url: &str) -> Demand {
     Demand {
         properties: serde_json::json!({
             "golem": {
-                "node": {
-                    "id": {
-                        "name": node_name
-                    },
-                },
-                "srv": {
-                    "comp":{
-                        "wasm": {
-                            "task_package": wasm_url
-                        }
-                    }
-                }
+                "node.id.name": node_name,
+                "srv.comp.wasm.task_package": wasm_url
             }
         }),
         constraints: r#"(&
@@ -272,7 +262,7 @@ struct AgreementProducer {
     subscription_id: String,
     api: MarketRequestorApi,
     my_demand: Demand,
-    pending: Vec<oneshot::Sender<String>>,
+    pending: Vec<oneshot::Sender<(String, String)>>,
 }
 
 impl Actor for AgreementProducer {
@@ -331,11 +321,11 @@ impl Message for ProcessEvent {
 struct NewAgreement;
 
 impl Message for NewAgreement {
-    type Result = Result<String, anyhow::Error>;
+    type Result = Result<(String, String), anyhow::Error>;
 }
 
 impl Handler<NewAgreement> for AgreementProducer {
-    type Result = ActorResponse<Self, String, anyhow::Error>;
+    type Result = ActorResponse<Self, (String, String), anyhow::Error>;
 
     fn handle(&mut self, msg: NewAgreement, ctx: &mut Self::Context) -> Self::Result {
         let (tx, rx) = oneshot::channel();
@@ -343,8 +333,8 @@ impl Handler<NewAgreement> for AgreementProducer {
 
         ActorResponse::r#async(
             async move {
-                let agreement_id = rx.await?;
-                Ok(agreement_id)
+                let (provider_id, agreement_id) = rx.await?;
+                Ok((provider_id, agreement_id))
             }
             .into_actor(self),
         )
@@ -360,7 +350,8 @@ impl Handler<ProcessEvent> for AgreementProducer {
                 event_date: _,
                 proposal,
             } => {
-                log::info!("Processing Offer Proposal... [state: {:?}]", proposal.state().unwrap());
+                let provider_id = proposal.issuer_id().unwrap().clone();
+                log::info!("[{}..] Processing {:?} Offer Proposal...", &provider_id[..7], proposal.state().unwrap());
                 if proposal.state.unwrap_or(ProposalState::Initial) == ProposalState::Initial {
                     if proposal.prev_proposal_id.is_some() {
                         log::error!(
@@ -381,11 +372,10 @@ impl Handler<ProcessEvent> for AgreementProducer {
                             return MessageResult(());
                         }
                     };
-                    let provider_id = proposal.issuer_id().unwrap().clone();
                     let requestor_api = self.api.clone();
                     let subscription_id = self.subscription_id.clone();
                     let f = async move {
-                        log::info!("Accepting Offer Proposal from {}..", &provider_id[..7]);
+                        log::info!("[{}..] Accepting Offer Proposal...", &provider_id[..7]);
                         let new_proposal_id = match requestor_api
                             .counter_proposal(&bespoke_proposal, &subscription_id)
                             .await
@@ -435,8 +425,8 @@ impl Handler<ProcessEvent> for AgreementProducer {
                                 log::error!("fail to negotiate agreement: {}", new_agreement_id);
                                 Err(slot)
                             } else {
-                                log::info!("Agreement negotiated and confirmed with {}..!", &provider_id[..7]);
-                                let _ = slot.send(new_agreement_id);
+                                log::info!("[{}..] Agreement negotiated and CONFIRMED!", &provider_id[..7]);
+                                let _ = slot.send((provider_id, new_agreement_id));
                                 Ok(())
                             }
                         }
@@ -462,9 +452,9 @@ async fn agreement_producer(
     market_api: &MarketRequestorApi,
     demand: &Demand,
 ) -> anyhow::Result<Addr<AgreementProducer>> {
-    log::info!("My demand: {:#?}", demand);
+    log::info!("Publishing demand: {:#?}", demand);
     let subscription_id = market_api.subscribe(demand).await?;
-    log::info!("Subscribed to Market API ( id : {} )", subscription_id);
+    log::info!("Demand published to Market API ( id : {} )", subscription_id);
     let producer = AgreementProducer {
         subscription_id,
         api: market_api.clone(),
@@ -554,8 +544,7 @@ impl PaymentManager {
 
                             if this.valid_agreements.remove(&invoice.agreement_id) {
                                 let invoice_id = invoice.invoice_id;
-                                log::info!("Accepting invoice amounted {:.2} GNT, issuer: {}..", invoice.amount, &invoice.issuer_id[..7]);
-                                this.amount_paid += invoice.amount.clone();
+                                log::info!("[{}..] Accepting invoice amounted {:.2} GNT", &invoice.issuer_id[..7], invoice.amount);
                                 let acceptance = model::payment::Acceptance {
                                     total_amount_accepted: invoice.amount.clone(),
                                     allocation_id: this.allocation_id.clone(),
@@ -567,6 +556,8 @@ impl PaymentManager {
                                         log::error!("invoice {} accept error: {}", invoice_id, e)
                                     }
                                 });
+                                this.amount_paid += invoice.amount.clone();
+
                             } else {
                                 let invoice_id = invoice.invoice_id;
 
@@ -781,7 +772,7 @@ async fn try_process_task(
     task: TaskDef,
 ) -> anyhow::Result<TaskResult> {
     let activity_api = client.interface::<ya_client::activity::ActivityRequestorApi>()?;
-    let agreement_id = a.send(NewAgreement).await??;
+    let (provider_id, agreement_id) = a.send(NewAgreement).await??;
     let activity_id = match activity_api.control().create_activity(&agreement_id).await {
         Ok(id) => id,
         Err(e) => {
@@ -790,7 +781,7 @@ async fn try_process_task(
         }
     };
 
-    log::info!("Activity created. Sending ExeScript... [{}..]", &activity_id[..7]);
+    log::info!("[{}..] Activity created. Sending ExeScript...", &provider_id[..7]);
     let batch_id = activity_api
         .control()
         .exec(script.clone(), &activity_id)
@@ -803,7 +794,7 @@ async fn try_process_task(
             break;
         }
 
-        log::info!("Waiting for ExeScript results...   [{}..]", &activity_id[..7]);
+        log::info!("[{}..] Waiting for ExeScript results...", &provider_id[..7]);
         let results = activity_api
             .control()
             .get_exec_batch_results(&activity_id, &batch_id, Some(60))
@@ -828,7 +819,7 @@ async fn try_process_task(
         .await;
 
     for (slot, output) in outputs {
-        log::info!("ExeScript finished. Downloading result...   [{}..]", &activity_id[..7]);
+        log::info!("[{}..] ExeScript finished. Downloading result...", &provider_id[..7]);
         log::debug!("Downloading: {}", output.display());
         slot.download(&output).await?;
     }
@@ -836,7 +827,7 @@ async fn try_process_task(
         log::error!("fail to destroy activity: {}", e);
     }
 
-    log::info!("Task finished.   [{}..]", &activity_id[..7]);
+    log::info!("[{}..] Activity finished.", &provider_id[..7]);
     Ok(TaskResult {
         agreement_id,
         task_def,
@@ -923,10 +914,10 @@ pub fn run(
             if pending == 0 {
                 break;
             }
-            log::warn!("still {} pending payments", pending);
+            log::warn!("{} pending payments; waiting...", pending);
             tokio::time::delay_for(Duration::from_millis(700)).await;
         }
-        log::info!("All payments done.");
+        log::info!("All payments processed.");
         payment_man.send(ReleaseAllocation).await?;
 
         Ok::<_, anyhow::Error>(())
