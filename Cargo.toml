@@ -1,9 +1,13 @@
 [package]
 name = "gwasm-runner"
+description = "Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem."
 version = "0.3.1"
 authors = ["Golem Factory <contact@golem.network>"]
+homepage = "https://github.com/golemfactory/gwasm-runner"
+repository = "https://github.com/golemfactory/gwasm-runner"
+license = "GPL-3.0"
+license-file = "LICENSE"
 edition = "2018"
-description = "Command line tool for running gWasm compatible apps locally, via Golem Unlimited or via Brass Golem."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
