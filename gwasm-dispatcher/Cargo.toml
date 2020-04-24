@@ -6,7 +6,6 @@ authors = ["Golem Factory <contact@golem.network>"]
 homepage = "https://github.com/golemfactory/gwasm-runner"
 repository = "https://github.com/golemfactory/gwasm-runner"
 license = "LGPL-3.0"
-license-file = "LICENSE"
 edition = "2018"
 
 [dependencies]
