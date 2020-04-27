@@ -1,9 +1,9 @@
 #![allow(clippy::unit_arg)]
 
+use humantime::Duration;
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::*;
-use humantime::Duration;
 
 #[cfg(feature = "with-brass-mode")]
 mod brass_config;
@@ -108,9 +108,14 @@ fn main() -> anyhow::Result<()> {
         Backend::BrassGolem => Ok(eprintln!("golem brass mode is unsupported in this runner")),
 
         Backend::Local => run_on_local(engine, &opts.wasm_app, &opts.wasm_app_args),
-        Backend::Lwg { url, token } => {
-            lwg::run(url, token, engine, &opts.wasm_app, *opts.timeout, &opts.wasm_app_args)
-        }
+        Backend::Lwg { url, token } => lwg::run(
+            url,
+            token,
+            engine,
+            &opts.wasm_app,
+            *opts.timeout,
+            &opts.wasm_app_args,
+        ),
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
         #[cfg(not(feature = "with-gu-mode"))]

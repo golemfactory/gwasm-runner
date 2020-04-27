@@ -150,8 +150,9 @@ async fn push_image(
 }
 
 fn build_demand(node_name: &str, wasm_url: &str, timeout: std::time::Duration) -> Demand {
-    let expiration = Utc::now() + chrono::Duration::from_std(timeout)
-        .unwrap_or(chrono::Duration::seconds(i64::max_value()));
+    let expiration = Utc::now()
+        + chrono::Duration::from_std(timeout)
+            .unwrap_or(chrono::Duration::seconds(i64::max_value()));
 
     let mut properties = serde_json::json!({
         "golem": {
