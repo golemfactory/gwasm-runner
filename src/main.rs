@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::*;
+use humantime::Duration;
 
 #[cfg(feature = "with-brass-mode")]
 mod brass_config;
@@ -79,6 +80,9 @@ struct Opt {
     /// Skip confirmation dialogs
     #[structopt(short = "y", long = "assume-yes")]
     skip_confirmation: bool,
+    /// Set timeout for all tasks (Wasi mode only).
+    #[structopt(long, default_value = "3h")]
+    timeout: Duration,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -105,7 +109,7 @@ fn main() -> anyhow::Result<()> {
 
         Backend::Local => run_on_local(engine, &opts.wasm_app, &opts.wasm_app_args),
         Backend::Lwg { url, token } => {
-            lwg::run(url, token, engine, &opts.wasm_app, &opts.wasm_app_args)
+            lwg::run(url, token, engine, &opts.wasm_app, *opts.timeout, &opts.wasm_app_args)
         }
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
