@@ -1323,7 +1323,7 @@ dependencies = [
 
 [[package]]
 name = "gwasm-dispatcher"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1346,7 +1346,7 @@ dependencies = [
  "gu-client 0.1.0 (git+https://github.com/golemfactory/golem-unlimited.git?branch=feature/api-on-actix-http-1)",
  "gu-wasm-env-api 0.1.0 (git+https://github.com/golemfactory/gu-exec-env-driver-wasm.git)",
  "gwasm-api 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gwasm-dispatcher 0.1.0",
+ "gwasm-dispatcher 0.2.0",
  "indicatif 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
