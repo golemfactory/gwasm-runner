@@ -1,5 +1,6 @@
 #![allow(clippy::unit_arg)]
 
+use humantime::Duration;
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::*;
@@ -79,6 +80,9 @@ struct Opt {
     /// Skip confirmation dialogs
     #[structopt(short = "y", long = "assume-yes")]
     skip_confirmation: bool,
+    /// Set timeout for all tasks (Wasi mode only).
+    #[structopt(long, default_value = "3h")]
+    timeout: Duration,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -104,9 +108,14 @@ fn main() -> anyhow::Result<()> {
         Backend::BrassGolem => Ok(eprintln!("golem brass mode is unsupported in this runner")),
 
         Backend::Local => run_on_local(engine, &opts.wasm_app, &opts.wasm_app_args),
-        Backend::Lwg { url, token } => {
-            lwg::run(url, token, engine, &opts.wasm_app, &opts.wasm_app_args)
-        }
+        Backend::Lwg { url, token } => lwg::run(
+            url,
+            token,
+            engine,
+            &opts.wasm_app,
+            *opts.timeout,
+            &opts.wasm_app_args,
+        ),
         #[cfg(feature = "with-gu-mode")]
         Backend::GolemUnlimited(addr) => gu_runner::run(addr, &opts.wasm_app, &opts.wasm_app_args),
         #[cfg(not(feature = "with-gu-mode"))]
