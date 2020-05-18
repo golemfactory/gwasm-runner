@@ -177,7 +177,7 @@ fn build_demand(node_name: &str, wasm_url: &str, timeout: std::time::Duration) -
 }
 
 struct PaymentManager {
-    payment_api: ya_client::payment::requestor::RequestorApi,
+    payment_api: ya_client::payment::requestor::PaymentRequestorApi,
     allocation_id: String,
     total_amount: BigDecimal,
     amount_paid: BigDecimal,
@@ -359,7 +359,7 @@ impl Handler<ReleaseAllocation> for PaymentManager {
 }
 
 async fn allocate_funds_for_task(
-    payment_api: &ya_client::payment::requestor::RequestorApi,
+    payment_api: &ya_client::payment::requestor::PaymentRequestorApi,
     n_tasks: usize,
 ) -> anyhow::Result<Addr<PaymentManager>> {
     let now = Utc::now();
@@ -591,7 +591,7 @@ pub fn run(
     let merge_path_ref = merge_path.clone();
 
     let storage_server: Arc<str> = "http://34.244.4.185:8000/".into();
-    let payment_api: ya_client::payment::requestor::RequestorApi = client.interface()?;
+    let payment_api: ya_client::payment::requestor::PaymentRequestorApi = client.interface()?;
     let task_output_path = output_path.clone();
     let r = sys.block_on(async move {
         // TODO: Catch error
