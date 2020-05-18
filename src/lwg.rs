@@ -33,10 +33,10 @@ use ya_client::model::market::{
 use ya_client::web::WebClient;
 use zip::CompressionMethod;
 
-mod negociator;
+mod negotiator;
 mod storage;
 
-use negociator::*;
+use negotiator::*;
 use storage::{DistSlot, DistStorage};
 
 #[derive(Serialize, Deserialize, Debug)]
