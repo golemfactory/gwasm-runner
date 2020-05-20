@@ -1,5 +1,5 @@
 use gwr_backend::rt::Engine;
-use gwr_backend::{Flags};
+use gwr_backend::Flags;
 use std::path::Path;
 pub use ya_client::model::market::Demand;
 

@@ -6,7 +6,9 @@ use std::path::Path;
 use {
     crate::{config::GolemConfig, task::TaskBuilder},
     gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
-    gwr_backend::{config_path, dispatcher::TaskDef, rt, run_local_code, WorkDir, for_spwasm, for_wasmtime},
+    gwr_backend::{
+        config_path, dispatcher::TaskDef, for_spwasm, for_wasmtime, rt, run_local_code, WorkDir,
+    },
     indicatif::ProgressBar,
     promptly::prompt_default,
     std::{collections::HashMap, fs::OpenOptions, path::PathBuf},

@@ -1,12 +1,12 @@
 use gwr_runtime_api::*;
 
+use anyhow::Context;
 use sp_wasm_engine::prelude::NodeMode;
 use sp_wasm_engine::sandbox as sp;
 use sp_wasm_engine::sandbox::engine::EngineRef;
 use sp_wasm_engine::sandbox::load::Bytes;
 use std::convert::TryInto;
 use std::path::Path;
-use anyhow::Context;
 
 type Result<T> = anyhow::Result<T>;
 
@@ -35,10 +35,15 @@ impl Engine for SpEngine {
 
     fn sandbox(&self, args: Vec<String>) -> Result<Self::Sandbox> {
         let mut inner = sp::Sandbox::new_on_engine(self.inner.clone())
-            .map_err(anyhow::Error::msg).context("engine create")?
+            .map_err(anyhow::Error::msg)
+            .context("engine create")?
             .set_exec_args(args)
-            .map_err(anyhow::Error::msg).context("set exec args")?;
-        inner.init().map_err(anyhow::Error::msg).context("box init")?;
+            .map_err(anyhow::Error::msg)
+            .context("set exec args")?;
+        inner
+            .init()
+            .map_err(anyhow::Error::msg)
+            .context("box init")?;
         Ok(SpSandbox { inner: Some(inner) })
     }
 
@@ -80,7 +85,8 @@ impl Sandbox for SpSandbox {
             .as_mut()
             .unwrap()
             .mount(src.as_ref(), des, into_mode(mode))
-            .map_err(anyhow::Error::msg).context("mount")?)
+            .map_err(anyhow::Error::msg)
+            .context("mount")?)
     }
 
     fn work_dir(&mut self, dir: &str) -> Result<()> {

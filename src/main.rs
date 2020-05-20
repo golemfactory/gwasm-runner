@@ -1,6 +1,6 @@
 #![allow(clippy::unit_arg)]
 use gwr_backend::{rt::Engine, Flags};
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use structopt::*;
 
@@ -23,37 +23,33 @@ struct Opt {
     pub wasm_app_args: Vec<String>,
 }
 
-#[cfg(all(feature="spwasm", feature="wasmtime"))]
+#[cfg(all(feature = "spwasm", feature = "wasmtime"))]
 fn default_runtime(wasm_app: &Path) -> anyhow::Result<Runtime> {
     if wasm_app.with_extension("js").exists() {
-        return RuntimeName::SpWasm.into_runtime()
+        return RuntimeName::SpWasm.into_runtime();
     }
-    return RuntimeName::Wasmtime.into_runtime()
+    return RuntimeName::Wasmtime.into_runtime();
 }
 
-#[cfg(all(not(feature="spwasm"), feature="wasmtime"))]
+#[cfg(all(not(feature = "spwasm"), feature = "wasmtime"))]
 fn default_runtime(_: &Path) -> anyhow::Result<Runtime> {
-    return RuntimeName::Wasmtime.into_runtime()
+    return RuntimeName::Wasmtime.into_runtime();
 }
 
-#[cfg(all(feature="spwasm", not(feature="wasmtime")))]
+#[cfg(all(feature = "spwasm", not(feature = "wasmtime")))]
 fn default_runtime(_: &Path) -> anyhow::Result<Runtime> {
-    return RuntimeName::SpWasm.into_runtime()
+    return RuntimeName::SpWasm.into_runtime();
 }
 
 impl Opt {
-
     fn runtime(&self) -> anyhow::Result<Runtime> {
         if let Some(runtime_name) = &self.runtime {
             runtime_name.clone().into_runtime()
-        }
-        else {
+        } else {
             default_runtime(&self.wasm_app)
         }
     }
-
 }
-
 
 macro_rules! gen {
     {
