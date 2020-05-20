@@ -1,7 +1,7 @@
-use crate::taskdef::{FromTaskDef, TaskDef};
 use std::path::Path;
 
-type Error = Box<dyn std::error::Error + 'static>;
+use crate::error::DynError;
+use crate::taskdef::{FromTaskDef, TaskDef};
 
 pub trait Merger<In: FromTaskDef, Out: FromTaskDef> {
     fn merge(self, args_vec: &[String], tasks: Vec<(In, Out)>);
@@ -13,8 +13,8 @@ pub(crate) fn merge_for<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     in_outs_pack: Vec<(TaskDef, TaskDef)>,
     split_dir: &Path,
     exec_dir: &Path,
-) -> Result<(), Error> {
-    let in_outs: Result<Vec<(In, Out)>, Error> = in_outs_pack
+) -> Result<(), DynError> {
+    let in_outs: Result<Vec<(In, Out)>, DynError> = in_outs_pack
         .into_iter()
         .map(|(params, output)| -> Result<(In, Out), _> {
             Ok((

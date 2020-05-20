@@ -1,14 +1,17 @@
 [package]
 name = "gwasm-dispatcher"
-version = "0.1.0"
-authors = ["Golem Factory <contact@golem.network>"]
-edition = "2018"
 description = "High level API for gWasmRunner compatible apps"
+version = "0.2.0"
+authors = ["Golem Factory <contact@golem.network>"]
+homepage = "https://github.com/golemfactory/gwasm-runner"
+repository = "https://github.com/golemfactory/gwasm-runner"
+license = "LGPL-3.0"
+edition = "2018"
 
 [dependencies]
 serde_json="1.0.40"
 thiserror = "1.0.14"
 
 [dependencies.serde]
-version = "1.0.99"
+version = "1.0.104"
 features=["derive"]

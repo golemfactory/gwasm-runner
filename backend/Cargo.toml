@@ -18,7 +18,7 @@ uuid = { version = "0.7", features = ["serde", "v4"] }
 serde_json="1.0.40"
 humantime = "2.0.0"
 
-gwasm-dispatcher = { version="0.1", path = "../gwasm-dispatcher" }
+gwasm-dispatcher = { version="0.2", path = "../gwasm-dispatcher" }
 
 gwr-runtime-api = { version="0.1", path = "../runtime" }
 gwr-runtime-spwasm = { version="0.1", path = "../runtime/spwasm", optional = true }

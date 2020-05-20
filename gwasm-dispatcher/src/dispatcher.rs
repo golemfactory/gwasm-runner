@@ -1,41 +1,61 @@
 use std::env;
+use std::fmt;
 use std::fs;
-use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
+use std::iter::FromIterator;
+
+use crate::error::DynError;
 use crate::executor::{exec_for, Executor};
 use crate::merger::{merge_for, Merger};
 use crate::splitter::{split_into, Splitter};
 use crate::taskdef::{FromTaskDef, IntoTaskDef, TaskDef};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::error::Error;
 use std::io::{BufReader, BufWriter};
 
 pub type TaskResult<In, Out> = Vec<(In, Out)>;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum ApiError {
-    #[error("Can't find parent")]
     NoParent,
-    #[error("Expected -- separator.")]
     NoSeparator,
-    #[error("No such command {command}.")]
     NoCommand { command: String },
-    #[error("Invalid params format: {message}.")]
     InvalidParamsFormat { message: String },
-    #[error("Json conversion error: {error}.")]
     JsonError { error: serde_json::error::Error },
 }
 
-type Error = Box<dyn std::error::Error + 'static>;
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            ApiError::NoParent => write!(f, "Can't find parent"),
+            ApiError::NoSeparator => write!(f, "Expected -- separator."),
+            ApiError::NoCommand { command } => write!(f, "No such command {}.", command),
+            ApiError::InvalidParamsFormat { message } => {
+                write!(f, "Invalid params format: {}.", message)
+            }
+            ApiError::JsonError { error } => write!(f, "Json conversion error: {}.", error),
+        }
+    }
+}
 
-fn load_from<T: DeserializeOwned>(json_file: &Path) -> Result<T, Error> {
+impl Error for ApiError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::JsonError { error } => Some(error),
+            _ => None,
+        }
+    }
+}
+
+fn load_from<T: DeserializeOwned>(json_file: &Path) -> Result<T, DynError> {
     let inf = BufReader::new(fs::OpenOptions::new().read(true).open(json_file)?);
 
     Ok(serde_json::from_reader(inf)?)
 }
 
-fn save_to<T: Serialize>(output_file: &Path, value: &T) -> Result<(), Error> {
+fn save_to<T: Serialize>(output_file: &Path, value: &T) -> Result<(), DynError> {
     let outf = BufWriter::new(
         fs::OpenOptions::new()
             .write(true)
@@ -51,7 +71,7 @@ fn save_to<T: Serialize>(output_file: &Path, value: &T) -> Result<(), Error> {
 fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
     splitter: S,
     args: &[String],
-) -> Result<(), Error> {
+) -> Result<(), DynError> {
     // TODO: check param len
     let work_dir = PathBuf::from(&args[0]);
     let split_args = &Vec::from_iter(args[1..].iter().cloned());
@@ -65,7 +85,7 @@ fn split_step<S: Splitter<WorkItem = In>, In: IntoTaskDef + FromTaskDef>(
 fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     executor: E,
     args: &[String],
-) -> Result<(), Error> {
+) -> Result<(), DynError> {
     let params_path = PathBuf::from(args[0].clone());
     let input_dir = params_path.parent().ok_or(ApiError::NoParent)?;
     let output_desc_path = PathBuf::from(args[1].clone());
@@ -80,7 +100,7 @@ fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
 fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
     merger: M,
     args: &[String],
-) -> Result<(), Error> {
+) -> Result<(), DynError> {
     let tasks_params_path = PathBuf::from(args[0].clone());
     let tasks_outputs_path = PathBuf::from(args[1].clone());
 
@@ -117,7 +137,7 @@ pub fn run<
     splitter: S,
     executor: E,
     merger: M,
-) -> Result<(), Error> {
+) -> Result<(), DynError> {
     let mut args: Vec<String> = env::args().collect();
     // TODO: check param len
     let command = args[1].clone();
