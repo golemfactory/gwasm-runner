@@ -71,7 +71,7 @@ impl DistStorage {
         let id = uuid::Uuid::new_v4();
         let upload_url = format!("{}upload/{}-{}", self.url, prefix, id);
 
-        let response = c
+        let _response = c
             .put(&upload_url)
             .content_length(bytes.len() as u64)
             .content_type("application/octet-stream")

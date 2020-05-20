@@ -1,12 +1,10 @@
 use actix::prelude::*;
 use chrono::Utc;
 use futures::channel::oneshot;
-use futures::prelude::*;
-use futures::SinkExt;
 use std::time::Duration;
 use ya_client::market::MarketRequestorApi;
 use ya_client::model::market::{
-    proposal::State as ProposalState, AgreementProposal, Demand, Proposal, RequestorEvent,
+    proposal::State as ProposalState, AgreementProposal, Demand, RequestorEvent,
 };
 
 pub struct AgreementProducer {
@@ -23,7 +21,7 @@ impl Actor for AgreementProducer {
         self.process_events(ctx);
     }
 
-    fn stopped(&mut self, ctx: &mut Self::Context) {
+    fn stopped(&mut self, _ctx: &mut Self::Context) {
         log::info!("Stopping");
         let subscription_id = self.subscription_id.clone();
         let api = self.api.clone();
@@ -63,7 +61,7 @@ impl AgreementProducer {
                     }
                 }
                 .into_actor(self)
-                .then(|r, act, ctx| {
+                .then(|_r, act, ctx| {
                     act.process_events(ctx);
                     fut::ready(())
                 }),
@@ -89,7 +87,7 @@ impl Message for NewAgreement {
 impl Handler<NewAgreement> for AgreementProducer {
     type Result = ActorResponse<Self, String, anyhow::Error>;
 
-    fn handle(&mut self, msg: NewAgreement, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: NewAgreement, _ctx: &mut Self::Context) -> Self::Result {
         let (tx, rx) = oneshot::channel();
         self.pending.push(tx);
 
@@ -166,17 +164,17 @@ impl Handler<ProcessEvent> for AgreementProducer {
                         new_agreement_id.clone(),
                         Utc::now() + chrono::Duration::hours(2),
                     );
-                    let me = ctx.address();
+                    let _me = ctx.address();
 
                     let requestor_api = self.api.clone();
-                    let me = ctx.address();
-                    let mut slot = match self.pending.pop() {
+                    let _me = ctx.address();
+                    let slot = match self.pending.pop() {
                         Some(slot) => slot,
                         None => return MessageResult(()),
                     };
                     let _ = ctx.spawn(
                         async move {
-                            if let Err(e) = async {
+                            if let Err(_e) = async {
                                 let _ack = requestor_api.create_agreement(&new_agreement).await?;
                                 log::debug!("confirm agreement = {}", new_agreement_id);
                                 requestor_api.confirm_agreement(&new_agreement_id).await?;

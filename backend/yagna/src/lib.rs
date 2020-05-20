@@ -1,15 +1,18 @@
 use gwr_backend::rt::Engine;
+use gwr_backend::{Flags};
 use std::path::Path;
 pub use ya_client::model::market::Demand;
+
 mod demand;
 mod negotiator;
 mod runner;
 mod storage;
 
 pub trait YagnaEngine: Engine {
-    fn build_image(wasm_path: &Path) -> anyhow::Result<Vec<u8>>;
+    fn build_image(&self, wasm_path: &Path) -> anyhow::Result<Vec<u8>>;
 
     fn build_demand(
+        &self,
         node_name: &str,
         wasm_url: &str,
         timeout: std::time::Duration,
@@ -31,5 +34,22 @@ impl YagnaBackend {
             }),
             _ => None,
         })
+    }
+
+    pub fn run<E: YagnaEngine + 'static>(
+        &self,
+        engine: E,
+        flags: &Flags,
+        wasm_path: &Path,
+        args: &[String],
+    ) -> anyhow::Result<()> {
+        runner::run(
+            self.url.clone(),
+            self.token.clone(),
+            engine,
+            wasm_path,
+            flags.timeout.into(),
+            args,
+        )
     }
 }

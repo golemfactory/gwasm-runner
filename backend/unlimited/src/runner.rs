@@ -1,9 +1,11 @@
 use actix::prelude::*;
 use futures::unsync::oneshot;
+use futures::Async;
 use gu_client::model::envman::{Command, CreateSession, ResourceFormat};
 use gu_client::{r#async as guc, NodeId};
 use gu_wasm_env_api::{EntryPoint, Manifest, MountPoint, RuntimeType};
 use gwr_backend::dispatcher::TaskDef;
+use gwr_backend::{rt, run_local_code, WorkDir};
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
@@ -13,8 +15,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use zip::CompressionMethod;
-use gwr_backend::{run_local_code, WorkDir, rt};
-use futures::{Async};
 
 // 1. Image cache [TODO]
 // 2.
@@ -102,10 +102,12 @@ fn download_blob(
         .create_new(true)
         .open(destination)
         .unwrap();
-    blob.download().map_err(|e| anyhow::Error::msg(e.to_string())).for_each(move |chunk| {
-        f.write_all(chunk.as_ref())?;
-        Ok(())
-    })
+    blob.download()
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
+        .for_each(move |chunk| {
+            f.write_all(chunk.as_ref())?;
+            Ok(())
+        })
 }
 
 impl Work {
@@ -350,12 +352,16 @@ impl Handler<StopManager> for WorkManager {
 
     fn handle(&mut self, _: StopManager, _ctx: &mut Self::Context) -> Self::Result {
         let session = self.session.deref().clone();
-        ActorResponse::r#async(session.delete().map_err(anyhow::Error::msg).into_actor(self).and_then(
-            |_, _, ctx| {
-                ctx.stop();
-                fut::ok(())
-            },
-        ))
+        ActorResponse::r#async(
+            session
+                .delete()
+                .map_err(anyhow::Error::msg)
+                .into_actor(self)
+                .and_then(|_, _, ctx| {
+                    ctx.stop();
+                    fut::ok(())
+                }),
+        )
     }
 }
 
@@ -406,7 +412,12 @@ fn json_stream<T: Serialize>(object: &T) -> impl Stream<Item = bytes::Bytes, Err
     futures::stream::once(bytes)
 }
 
-pub fn run<E : rt::Engine>(engine : E, hub_addr: String, wasm_path: &Path, args: &[String]) -> anyhow::Result<()> {
+pub fn run<E: rt::Engine>(
+    engine: E,
+    hub_addr: String,
+    wasm_path: &Path,
+    args: &[String],
+) -> anyhow::Result<()> {
     {
         let mut sys = System::new("GU-wasm -runner");
         let mut w = WorkDir::new("gu")?;
@@ -427,12 +438,7 @@ pub fn run<E : rt::Engine>(engine : E, hub_addr: String, wasm_path: &Path, args:
             split_args.push("split".to_owned());
             split_args.push("/task_dir/".to_owned());
             split_args.extend(args.iter().cloned());
-            run_local_code(
-                engine.clone(),
-                wasm_path,
-                &output_path,
-                split_args,
-            )?;
+            run_local_code(engine.clone(), wasm_path, &output_path, split_args)?;
         }
 
         let tasks_path = output_path.join("tasks.json");
@@ -650,12 +656,7 @@ pub fn run<E : rt::Engine>(engine : E, hub_addr: String, wasm_path: &Path, args:
             merge_args.push("/task_dir/merge/tasks.json".to_owned());
             merge_args.push("--".to_owned());
             merge_args.extend(args.iter().cloned());
-            run_local_code(
-                engine,
-                wasm_path,
-                merge_path.parent().unwrap(),
-                merge_args,
-            )?;
+            run_local_code(engine, wasm_path, merge_path.parent().unwrap(), merge_args)?;
         }
     }
 

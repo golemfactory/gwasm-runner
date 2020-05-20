@@ -19,7 +19,15 @@ members = [
 ]
 
 [features]
-default=['spwasm', 'wasmtime', 'with-brass', 'with-gu']
+default=[
+    'spwasm',
+    'wasmtime',
+
+    'with-brass',
+    'with-gu',
+    'with-yagna'
+]
+
 spwasm=['gwr-backend/spwasm']
 wasmtime=['gwr-backend/wasmtime']
 
@@ -38,3 +46,8 @@ gwr-backend-unlimited={ version = "0.1", path="backend/unlimited", optional=true
 gwr-backend-yagna={ version = "0.1", path="backend/yagna", optional=true }
 
 structopt = { version="0.2", features = ["wrap_help", "suggestions", "color"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3

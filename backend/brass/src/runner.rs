@@ -1,16 +1,16 @@
+#![allow(unused_imports)]
+
 use crate::BrassEngine;
 use std::cell::Cell;
 use std::path::Path;
 use {
     crate::{config::GolemConfig, task::TaskBuilder},
     gwasm_api::prelude::{compute, ComputedTask, GWasmBinary, ProgressUpdate},
-    gwr_backend::{config_path, dispatcher::TaskDef, rt, run_local_code, WorkDir},
+    gwr_backend::{config_path, dispatcher::TaskDef, rt, run_local_code, WorkDir, for_spwasm, for_wasmtime},
     indicatif::ProgressBar,
     promptly::prompt_default,
     std::{collections::HashMap, fs::OpenOptions, path::PathBuf},
 };
-
-const TASK_TYPE: &str = "brass";
 
 struct ProgressUpdater {
     bar: ProgressBar,
@@ -54,26 +54,30 @@ pub struct RunnerContext<E: rt::Engine> {
     wasm_path: PathBuf,
     workdir: WorkDir,
 }
+for_spwasm! {
+    const TASK_TYPE: &str = "brass";
 
-impl BrassEngine for gwr_backend::SpEngine {
-    fn context_from_path(self, wasm_path: &Path) -> anyhow::Result<RunnerContext<Self>> {
-        let golem_config = GolemConfig::from(config_path(TASK_TYPE)?.join("config.json"))?;
-        log::info!("Using: {:#?}", golem_config);
-        let workdir = WorkDir::new(TASK_TYPE)?;
-        log::info!("Working directory: {}", workdir.base_dir().display());
-        Ok(RunnerContext {
-            engine_ref: self,
-            golem_config,
-            js_path: wasm_path.with_extension("js"),
-            wasm_path: wasm_path.to_path_buf(),
-            workdir,
-        })
+    impl BrassEngine for gwr_backend::SpEngine {
+        fn context_from_path(self, wasm_path: &Path) -> anyhow::Result<RunnerContext<Self>> {
+            let golem_config = GolemConfig::from(config_path(TASK_TYPE)?.join("config.json"))?;
+            log::info!("Using: {:#?}", golem_config);
+            let workdir = WorkDir::new(TASK_TYPE)?;
+            log::info!("Working directory: {}", workdir.base_dir().display());
+            Ok(RunnerContext {
+                engine_ref: self,
+                golem_config,
+                js_path: wasm_path.with_extension("js"),
+                wasm_path: wasm_path.to_path_buf(),
+                workdir,
+            })
+        }
     }
 }
-
-impl BrassEngine for gwr_backend::WtEngine {
-    fn context_from_path(self, _wasm_path: &Path) -> anyhow::Result<RunnerContext<Self>> {
-        anyhow::bail!("brass backed supports only spwasm runtime")
+for_wasmtime! {
+    impl BrassEngine for gwr_backend::WtEngine {
+        fn context_from_path(self, _wasm_path: &Path) -> anyhow::Result<RunnerContext<Self>> {
+            anyhow::bail!("brass backed supports only spwasm runtime")
+        }
     }
 }
 

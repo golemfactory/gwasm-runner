@@ -1,6 +1,6 @@
 #![allow(clippy::unit_arg)]
-use gwr_backend::{rt, rt::Engine, Flags};
-use std::path::PathBuf;
+use gwr_backend::{rt::Engine, Flags};
+use std::path::{PathBuf, Path};
 use std::str::FromStr;
 use structopt::*;
 
@@ -13,6 +13,7 @@ struct Opt {
     /// Backend type to use
     #[structopt(long, short, default_value = "Local")]
     backend: Backend,
+    /// Runtime type to use. (spwasm, wasmtime)
     #[structopt(long, short)]
     runtime: Option<RuntimeName>,
     /// Wasm App binary path to run.
@@ -21,6 +22,38 @@ struct Opt {
     /// All other args that will be passed to the Wasm App
     pub wasm_app_args: Vec<String>,
 }
+
+#[cfg(all(feature="spwasm", feature="wasmtime"))]
+fn default_runtime(wasm_app: &Path) -> anyhow::Result<Runtime> {
+    if wasm_app.with_extension("js").exists() {
+        return RuntimeName::SpWasm.into_runtime()
+    }
+    return RuntimeName::Wasmtime.into_runtime()
+}
+
+#[cfg(all(not(feature="spwasm"), feature="wasmtime"))]
+fn default_runtime(_: &Path) -> anyhow::Result<Runtime> {
+    return RuntimeName::Wasmtime.into_runtime()
+}
+
+#[cfg(all(feature="spwasm", not(feature="wasmtime")))]
+fn default_runtime(_: &Path) -> anyhow::Result<Runtime> {
+    return RuntimeName::SpWasm.into_runtime()
+}
+
+impl Opt {
+
+    fn runtime(&self) -> anyhow::Result<Runtime> {
+        if let Some(runtime_name) = &self.runtime {
+            runtime_name.clone().into_runtime()
+        }
+        else {
+            default_runtime(&self.wasm_app)
+        }
+    }
+
+}
+
 
 macro_rules! gen {
     {
@@ -116,11 +149,12 @@ macro_rules! gen {
         impl Opt {
 
             fn run(self) -> anyhow::Result<()> {
+                let runtime = self.runtime()?;
                 Ok(match self.backend {
                 $(
                     $(#[cfg(feature=$b_feature)])?
                     Backend::$b_id(backend) => internal_gen_run! {
-                        on(self.runtime.unwrap().into_runtime()?)
+                        on(runtime)
                         engine => backend.run(engine, &self.flags, &self.wasm_app, self.wasm_app_args.as_ref())?
                     }
                 ),*

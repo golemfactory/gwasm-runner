@@ -28,7 +28,12 @@ impl GuBackend {
     }
 
     pub fn run<E: rt::Engine>(
-        &self,engine: E, flags: &Flags, wasm_path: &Path, args: &[String],) -> anyhow::Result<()> {
-        runner::run(engine, self.hub_url.clone(), wasm_path,  args)
+        &self,
+        engine: E,
+        _flags: &Flags,
+        wasm_path: &Path,
+        args: &[String],
+    ) -> anyhow::Result<()> {
+        runner::run(engine, self.hub_url.clone(), wasm_path, args)
     }
 }
