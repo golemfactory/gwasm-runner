@@ -1,0 +1,15 @@
+[package]
+name = "gwr-runtime-wasmtime"
+version = "0.1.0"
+authors = ["Golem Factory <contact@golem.network>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.31"
+gwr-runtime-api = { version="0.1", path = ".."}
+wasmtime = { version = "0.9" }
+wasmtime-wasi = { version = "0.9" }
+wasmtime-interface-types = { version = "0.9.0" }
+wasmtime-runtime = { version = "0.9.0" }
+wasi-common = { version = "0.9.0" }
+log = "0.4.8"

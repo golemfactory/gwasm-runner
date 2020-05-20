@@ -1,8 +1,5 @@
 #![allow(unused)]
 
-use crate::local_runner::run_local_code;
-use crate::wasm_engine::Engine;
-use crate::workdir::WorkDir;
 use actix::prelude::*;
 use actix_http::httpmessage::HttpMessage;
 use awc::error::WsClientError;
@@ -11,7 +8,6 @@ use chrono::{DateTime, Datelike, Timelike, Utc};
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::TryFutureExt;
-use gwasm_dispatcher::TaskDef;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
@@ -24,7 +20,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering::AcqRel;
 use std::sync::Arc;
 use std::time::Duration;
-use wasmtime::wasm::wasm_engine_delete;
 use ya_client::market::MarketRequestorApi;
 use ya_client::model;
 use ya_client::model::market::{
@@ -33,99 +28,9 @@ use ya_client::model::market::{
 use ya_client::web::WebClient;
 use zip::CompressionMethod;
 
-mod negotiator;
-mod storage;
-
-use negotiator::*;
-use storage::{DistSlot, DistStorage};
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct Manifest {
-    /// Deployment id in url like form.
-    pub id: String,
-    pub name: String,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub entry_points: Vec<EntryPoint>,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub mount_points: Vec<MountPoint>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct EntryPoint {
-    pub id: String,
-    pub wasm_path: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub enum MountPoint {
-    Ro(String),
-    Rw(String),
-    Wo(String),
-}
-
-impl MountPoint {
-    pub fn path(&self) -> &str {
-        match self {
-            MountPoint::Ro(path) => path,
-            MountPoint::Rw(path) => path,
-            MountPoint::Wo(path) => path,
-        }
-    }
-}
-
-fn build_image(wasm_path: &Path) -> anyhow::Result<Vec<u8>> {
-    let name_ws = wasm_path.file_name().unwrap().to_string_lossy();
-
-    let m = Manifest {
-        id: "wasm-runner/-/todo".to_string(),
-        name: name_ws.to_string(),
-        entry_points: vec![EntryPoint {
-            id: "main".to_string(),
-            wasm_path: name_ws.to_string(),
-        }],
-        mount_points: vec![MountPoint::Ro("in".into()), MountPoint::Rw("out".into())],
-    };
-
-    let mtime: chrono::DateTime<Utc> = wasm_path.metadata()?.modified()?.into();
-
-    let mtime = zip::DateTime::from_date_and_time(
-        mtime.year().try_into()?,
-        mtime.month().try_into()?,
-        mtime.day().try_into()?,
-        mtime.hour().try_into()?,
-        mtime.minute().try_into()?,
-        mtime.second().try_into()?,
-    )
-    .unwrap();
-
-    let mut zw = zip::ZipWriter::new(Cursor::new(Vec::new()));
-    zw.start_file(
-        "manifest.json",
-        zip::write::FileOptions::default()
-            .compression_method(CompressionMethod::Stored)
-            .last_modified_time(mtime.clone()),
-    )?;
-    serde_json::to_writer_pretty(&mut zw, &m)?;
-    zw.start_file(
-        name_ws.as_ref(),
-        zip::write::FileOptions::default()
-            .compression_method(CompressionMethod::Bzip2)
-            .last_modified_time(mtime.clone()),
-    )?;
-    std::io::copy(
-        &mut fs::OpenOptions::new().read(true).open(wasm_path)?,
-        &mut zw,
-    )?;
-    let data = zw.finish()?.into_inner();
-    Ok(data)
-}
+use super::negotiator::*;
+use super::storage::{DistSlot, DistStorage};
+use gwr_backend::{dispatcher::TaskDef, rt::Engine, run_local_code, WorkDir};
 
 async fn push_image(
     hub_url: Arc<str>,
@@ -146,33 +51,6 @@ async fn push_image(
         Ok(format!("hash:sha3:{}:{}", hex, download_url))
     } else {
         Err(WsClientError::InvalidResponseStatus(response.status()))
-    }
-}
-
-fn build_demand(node_name: &str, wasm_url: &str, timeout: std::time::Duration) -> Demand {
-    let expiration = Utc::now()
-        + chrono::Duration::from_std(timeout)
-            .unwrap_or(chrono::Duration::max_value());
-
-    let mut properties = serde_json::json!({
-        "golem": {
-            "node.id.name": node_name,
-            "srv.comp.wasm.task_package": wasm_url,
-            "srv.comp.expiration": expiration.timestamp_millis(),
-        },
-    });
-
-    Demand {
-        properties,
-        constraints: r#"(&
-            (golem.inf.mem.gib>0.5)
-            (golem.inf.storage.gib>1)
-            (golem.com.pricing.model=linear)
-        )"#
-        .to_string(),
-
-        demand_id: Default::default(),
-        requestor_id: Default::default(),
     }
 }
 
@@ -568,7 +446,6 @@ pub fn run(
     let mut sys = System::new("wasm -runner");
     let mut w = WorkDir::new("lwg")?;
     let image = build_image(&wasm_path)?;
-    //let hub_url: Arc<str> = format!("http://{}", hub_addr).into();
     log::info!("Locally splitting work into tasks");
     let output_path = w.split_output()?;
     {
@@ -582,7 +459,7 @@ pub fn run(
     let tasks_path = output_path.join("tasks.json");
 
     log::debug!("reading: {}", tasks_path.display());
-    let tasks: Vec<gwasm_dispatcher::TaskDef> =
+    let tasks: Vec<TaskDef> =
         serde_json::from_reader(fs::OpenOptions::new().read(true).open(tasks_path)?)?;
     log::info!("Created {} tasks", tasks.len());
 

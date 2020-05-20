@@ -8,106 +8,33 @@ description = "Command line tool for running wasi apps."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 members = [
-    "gwasm-dispatcher"
+    "gwasm-dispatcher",
+    "runtime",
+    "runtime/wasmtime",
+    "runtime/spwasm",
+    "backend",
+    "backend/brass",
+    "backend/yagna",
+    "backend/unlimited"
 ]
 
 [features]
-default=['wasi-engine', 'with-lwg']
-#with-gu-mode=['zip', 'awc', 'actix', 'gu-client', 'gu-wasm-env-api', 'futures', 'actix-files','tokio-timer']
-#with-brass-mode=['gwasm-api', 'indicatif', 'lazy_static', 'promptly', 'serde_urlencoded', 'serde_with']
-emscripten-engine=['sp-wasm-engine']
-wasi-engine=[
-    'wasmtime',
-    'wasmtime-wasi',
-    'wasmtime-interface-types',
-    'wasmtime-runtime',
-    'wasi-common'
-]
-with-lwg=['zip', 'awc', 'actix']
+default=['spwasm', 'wasmtime', 'with-brass', 'with-gu']
+spwasm=['gwr-backend/spwasm']
+wasmtime=['gwr-backend/wasmtime']
+
+with-brass=['gwr-backend-brass']
+with-gu=['gwr-backend-unlimited']
+with-yagna=['gwr-backend-yagna']
 
 [dependencies]
 log="0.4"
 env_logger = "0.6"
 anyhow = "1.0.28"
-sp-wasm-engine = { git = "https://github.com/golemfactory/sp-wasm", branch="wasm-runner", optional=true }
-sha3 = "0.8.2"
-futures="0.3"
+gwr-runtime-api= { version="0.1", path="runtime" }
+gwr-backend={ version = "0.1", path="backend" }
+gwr-backend-brass={ version = "0.1", path="backend/brass", optional=true }
+gwr-backend-unlimited={ version = "0.1", path="backend/unlimited", optional=true }
+gwr-backend-yagna={ version = "0.1", path="backend/yagna", optional=true }
 
 structopt = { version="0.2", features = ["wrap_help", "suggestions", "color"] }
-app_dirs = "1.2.1"
-uuid = { version = "0.7", features = ["serde", "v4"] }
-gwasm-dispatcher = { path = "gwasm-dispatcher" }
-humantime = "2.0.0"
-
-serde_json="1.0.40"
-serde= "1.0.99"
-bytes = "0.4"
-
-wasmtime = { version = "0.9", optional=true }
-wasmtime-wasi = { version = "0.9", optional=true }
-wasmtime-interface-types = { version = "0.9.0", optional=true }
-wasmtime-runtime = { version = "0.9.0", optional=true }
-wasi-common = { version = "0.9.0", optional=true }
-ya-client={ version = "0.3", git="https://github.com/golemfactory/ya-client.git" }
-dotenv = "0.15.0"
-tokio = { version = "0.2.10", features = ["signal"] }
-chrono="0.4.10"
-actix-http = "1.0.0"
-bigdecimal = "0.1.0"
-
-
-# with-gu-mode dependencies
-[dependencies.zip]
-version = "0.5.3"
-optional=true
-
-[dependencies.awc]
-version = "1.0.1"
-optional = true
-
-[dependencies.gu-client]
-git = "https://github.com/golemfactory/golem-unlimited.git"
-branch="feature/api-on-actix-http-1"
-optional = true
-
-[dependencies.actix-files]
-version ="0.1"
-optional = true
-
-[dependencies.actix]
-version="0.9"
-optional=true
-
-[dependencies.gu-wasm-env-api]
-git="https://github.com/golemfactory/gu-exec-env-driver-wasm.git"
-optional = true
-
-[dependencies.tokio-timer]
-version = "0.2"
-optional=true
-
-# with-brass-mode dependencies
-[dependencies.gwasm-api]
-version = "0.1.1"
-optional = true
-
-[dependencies.indicatif]
-version = "0.12.0"
-optional = true
-
-[dependencies.serde_urlencoded]
-version = "0.6.1"
-optional = true
-
-[dependencies.serde_with]
-version = "1.3.1"
-optional = true
-
-[dependencies.promptly]
-version = "0.2.0"
-optional = true
-
-[dependencies.lazy_static]
-version = "1.4.0"
-optional = true
-

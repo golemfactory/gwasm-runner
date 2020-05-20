@@ -1,14 +1,10 @@
 #![allow(unused)]
 
+use super::GWASM_APP_INFO;
 use anyhow::{anyhow, bail, Result as Fallible};
 use app_dirs::{app_dir, AppDataType::UserCache, AppInfo};
 use std::fs;
 use std::path::PathBuf;
-
-pub const GWASM_APP_INFO: AppInfo = AppInfo {
-    name: "g-wasm-runner",
-    author: "Golem Factory",
-};
 
 #[derive(Debug, Clone)]
 pub struct WorkDir {

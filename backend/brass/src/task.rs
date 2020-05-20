@@ -1,6 +1,6 @@
+use gwr_backend::dispatcher::TaskDef;
+use gwr_backend::WorkDir;
 use {
-    crate::workdir::WorkDir,
-    failure::Fallible,
     gwasm_api::prelude::{GWasmBinary, Options, Subtask, Task, Timeout},
     std::{
         fs::{self, OpenOptions},
@@ -58,7 +58,7 @@ impl<'a> TaskBuilder<'a> {
         self
     }
 
-    pub fn build(mut self) -> Fallible<(Task, Vec<String>)> {
+    pub fn build(mut self) -> anyhow::Result<(Task, Vec<String>)> {
         let name = self.name.take().unwrap_or_else(|| "unknown".to_owned());
         let bid = self.bid.unwrap_or(1.0);
         let budget = self.budget.unwrap_or(1.0);
@@ -90,12 +90,12 @@ impl<'a> TaskBuilder<'a> {
         let split_dir = self.workdir.split_output()?;
         let merge_dir = self.workdir.merge_path()?;
         let tasks_path = split_dir.join("tasks.json");
-        let tasks: Vec<gwasm_dispatcher::TaskDef> =
+        let tasks: Vec<TaskDef> =
             serde_json::from_reader(OpenOptions::new().read(true).open(tasks_path)?)?;
 
         let mut input_agg = Vec::new();
 
-        let subtask_order: Fallible<Vec<String>> = tasks
+        let subtask_order: anyhow::Result<Vec<String>> = tasks
             .into_iter()
             .map(|task| {
                 let subtask_dir = self.workdir.new_task()?;

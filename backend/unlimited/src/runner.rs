@@ -1,15 +1,10 @@
-use crate::local_runner::run_local_code;
-use crate::workdir::WorkDir;
 use actix::prelude::*;
-use failure::{bail, Fallible};
 use futures::unsync::oneshot;
-use futures::Async;
 use gu_client::model::envman::{Command, CreateSession, ResourceFormat};
 use gu_client::{r#async as guc, NodeId};
 use gu_wasm_env_api::{EntryPoint, Manifest, MountPoint, RuntimeType};
-use gwasm_dispatcher::TaskDef;
+use gwr_backend::dispatcher::TaskDef;
 use serde::Serialize;
-use sp_wasm_engine::prelude::*;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::fs::OpenOptions;
@@ -18,12 +13,14 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use zip::CompressionMethod;
+use gwr_backend::{run_local_code, WorkDir, rt};
+use futures::{Async};
 
 // 1. Image cache [TODO]
 // 2.
 //
 
-fn build_image(wasm_path: &Path, js_path: &Path) -> Fallible<Vec<u8>> {
+fn build_image(wasm_path: &Path, js_path: &Path) -> anyhow::Result<Vec<u8>> {
     let name_ws = wasm_path.file_name().unwrap().to_string_lossy();
     let name_js = js_path.file_name().unwrap().to_string_lossy();
 
@@ -70,17 +67,17 @@ fn build_image(wasm_path: &Path, js_path: &Path) -> Fallible<Vec<u8>> {
 fn push_image(
     hub_url: Arc<str>,
     image: Vec<u8>,
-) -> impl Future<Item = (String, String), Error = failure::Error> {
+) -> impl Future<Item = (String, String), Error = anyhow::Error> {
     let c = awc::Client::new();
 
     c.post(format!("{}/repo", hub_url))
         .content_length(image.len() as u64)
         .content_type("application/octet-stream")
         .send_body(image)
-        .map_err(|e| failure::err_msg(e.to_string()))
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
         .and_then(move |mut r| {
             r.json()
-                .map_err(|e| failure::err_msg(e.to_string()))
+                .map_err(anyhow::Error::msg)
                 .and_then(move |image_id: String| {
                     let hash = format!("sha1:{}", image_id);
                     Ok((format!("{}/repo/{}", hub_url, image_id), hash))
@@ -99,20 +96,20 @@ struct Work {
 fn download_blob(
     blob: &guc::Blob,
     destination: &Path,
-) -> impl Future<Item = (), Error = failure::Error> {
+) -> impl Future<Item = (), Error = anyhow::Error> {
     let mut f = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(destination)
         .unwrap();
-    blob.download().from_err().for_each(move |chunk| {
+    blob.download().map_err(|e| anyhow::Error::msg(e.to_string())).for_each(move |chunk| {
         f.write_all(chunk.as_ref())?;
         Ok(())
     })
 }
 
 impl Work {
-    fn download_results(&self) -> impl Future<Item = TaskDef, Error = failure::Error> {
+    fn download_results(&self) -> impl Future<Item = TaskDef, Error = anyhow::Error> {
         let files = if self.outputs.is_empty() {
             futures::future::Either::A(futures::future::ok(()))
         } else {
@@ -130,13 +127,13 @@ impl Work {
         let task_def = self
             .meta_blob
             .download()
-            .map_err(failure::err_msg)
+            .map_err(anyhow::Error::msg)
             .fold(Vec::new(), |mut v, b| {
                 v.extend_from_slice(b.as_ref());
-                futures::future::ok::<_, failure::Error>(v)
+                futures::future::ok::<_, anyhow::Error>(v)
             })
             .and_then(|d| -> Result<TaskDef, _> {
-                serde_json::from_slice(d.as_ref()).map_err(failure::err_msg)
+                serde_json::from_slice(d.as_ref()).map_err(anyhow::Error::msg)
             });
 
         let task_path = self.task_path.clone();
@@ -145,7 +142,7 @@ impl Work {
         Future::join(files, task_def).and_then(move |(_, task_def)| {
             task_def
                 .rebase_to(&task_path, &merge_path)
-                .map_err(failure::err_msg)
+                .map_err(anyhow::Error::from)
         })
     }
 }
@@ -167,7 +164,7 @@ impl WorkPeerState {
     }
 }
 
-type ReplyRef = oneshot::Sender<Result<TaskDef, failure::Error>>;
+type ReplyRef = oneshot::Sender<Result<TaskDef, anyhow::Error>>;
 
 struct WorkManager {
     session: guc::HubSessionRef,
@@ -286,7 +283,7 @@ impl WorkManager {
                             ctx.spawn(deployment.delete().then(|_| Ok(())).into_actor(act));
                             act.release_node(node_id, ctx);
                             if let Err(e) = r {
-                                let _ = reply.send(Err(e.into()));
+                                let _ = reply.send(Err(anyhow::Error::msg(e)));
                                 return fut::Either::B(fut::ok(()));
                             }
 
@@ -326,11 +323,11 @@ impl WorkManager {
 struct RunWork(Work);
 
 impl Message for RunWork {
-    type Result = Result<TaskDef, failure::Error>;
+    type Result = Result<TaskDef, anyhow::Error>;
 }
 
 impl Handler<RunWork> for WorkManager {
-    type Result = ActorResponse<Self, TaskDef, failure::Error>;
+    type Result = ActorResponse<Self, TaskDef, anyhow::Error>;
 
     fn handle(&mut self, msg: RunWork, ctx: &mut Self::Context) -> Self::Result {
         let (tx, rx) = futures::unsync::oneshot::channel();
@@ -345,15 +342,15 @@ impl Handler<RunWork> for WorkManager {
 struct StopManager;
 
 impl Message for StopManager {
-    type Result = Result<(), failure::Error>;
+    type Result = Result<(), anyhow::Error>;
 }
 
 impl Handler<StopManager> for WorkManager {
-    type Result = ActorResponse<Self, (), failure::Error>;
+    type Result = ActorResponse<Self, (), anyhow::Error>;
 
     fn handle(&mut self, _: StopManager, _ctx: &mut Self::Context) -> Self::Result {
         let session = self.session.deref().clone();
-        ActorResponse::r#async(session.delete().from_err().into_actor(self).and_then(
+        ActorResponse::r#async(session.delete().map_err(anyhow::Error::msg).into_actor(self).and_then(
             |_, _, ctx| {
                 ctx.stop();
                 fut::ok(())
@@ -409,16 +406,15 @@ fn json_stream<T: Serialize>(object: &T) -> impl Stream<Item = bytes::Bytes, Err
     futures::stream::once(bytes)
 }
 
-pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> {
+pub fn run<E : rt::Engine>(engine : E, hub_addr: String, wasm_path: &Path, args: &[String]) -> anyhow::Result<()> {
     {
         let mut sys = System::new("GU-wasm -runner");
-        let engine_ref = Sandbox::init_ejs()?;
         let mut w = WorkDir::new("gu")?;
 
         let js_path = wasm_path.with_extension("js");
 
         if !js_path.exists() {
-            bail!("file not found: {}", js_path.display())
+            anyhow::bail!("file not found: {}", js_path.display())
         }
 
         let image = build_image(&wasm_path, &js_path)?;
@@ -432,9 +428,8 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
             split_args.push("/task_dir/".to_owned());
             split_args.extend(args.iter().cloned());
             run_local_code(
-                engine_ref.clone(),
+                engine.clone(),
                 wasm_path,
-                &js_path,
                 &output_path,
                 split_args,
             )?;
@@ -443,7 +438,7 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
         let tasks_path = output_path.join("tasks.json");
 
         eprintln!("reading: {}", tasks_path.display());
-        let tasks: Vec<gwasm_dispatcher::TaskDef> =
+        let tasks: Vec<TaskDef> =
             serde_json::from_reader(fs::OpenOptions::new().read(true).open(tasks_path)?)?;
 
         let merge_path = w.merge_path()?;
@@ -451,7 +446,7 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
         let merge_path_ref = merge_path.clone();
 
         let image_fut = push_image(hub_url.clone(), image)
-            .map_err(failure::err_msg)
+            .map_err(anyhow::Error::msg)
             .and_then(|(image_url, image_hash)| {
                 eprintln!("got image: {}", image_url);
                 let c = gu_client::r#async::HubConnection::from_addr(hub_addr).unwrap();
@@ -464,8 +459,8 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
                             .into_iter()
                             .collect(),
                     })
-                    .map_err(failure::err_msg);
-                let peers = c.list_peers().map_err(failure::err_msg);
+                    .map_err(anyhow::Error::msg);
+                let peers = c.list_peers().map_err(anyhow::Error::msg);
 
                 session.join4(
                     peers,
@@ -478,7 +473,7 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
             .and_then(|(session, peers, image_url, image_hash)| {
                 session
                     .add_peers(peers.map(|n| n.node_id))
-                    .from_err()
+                    .map_err(anyhow::Error::msg)
                     .and_then(move |nodes| Ok((session, nodes, image_url, image_hash)))
             })
             .from_err()
@@ -602,7 +597,7 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
                             })
                             .collect::<Vec<_>>(),
                     )
-                    .from_err()
+                    .map_err(anyhow::Error::msg)
                     .and_then(move |r| {
                         log::info!("running code: {} tasks", r.len());
                         let session = session_for_update.clone();
@@ -656,9 +651,8 @@ pub fn run(hub_addr: String, wasm_path: &Path, args: &[String]) -> Fallible<()> 
             merge_args.push("--".to_owned());
             merge_args.extend(args.iter().cloned());
             run_local_code(
-                engine_ref,
+                engine,
                 wasm_path,
-                &js_path,
                 merge_path.parent().unwrap(),
                 merge_args,
             )?;

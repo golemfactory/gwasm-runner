@@ -1,0 +1,11 @@
+[package]
+name = "gwr-runtime-spwasm"
+version = "0.1.0"
+authors = ["Golem Factory <contact@golem.network>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.31"
+gwr-runtime-api = { version="0.1", path = ".."}
+sp-wasm-engine = { git = "https://github.com/golemfactory/sp-wasm", branch="wasm-runner" }
+log = "0.4.8"

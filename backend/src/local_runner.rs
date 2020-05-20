@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::wasm_engine::{Engine, Mode, Sandbox};
+use crate::rt::{Engine, Mode, Sandbox};
 use crate::workdir::WorkDir;
 use anyhow::{anyhow, bail, Result as Fallible};
 use gwasm_dispatcher::TaskDef;
