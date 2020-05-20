@@ -6,6 +6,8 @@ use sp_wasm_engine::sandbox::engine::EngineRef;
 use sp_wasm_engine::sandbox::load::Bytes;
 use std::convert::TryInto;
 use std::path::Path;
+use anyhow::Context;
+
 type Result<T> = anyhow::Result<T>;
 
 #[derive(Clone)]
@@ -13,15 +15,10 @@ pub struct SpEngine {
     inner: EngineRef,
 }
 
-impl Drop for SpEngine {
-    fn drop(&mut self) {
-        eprintln!("drop spengine!");
-    }
-}
-
 pub fn engine() -> Result<SpEngine> {
-    eprintln!("new spengine!");
-    let inner = sp::Sandbox::init_ejs().map_err(anyhow::Error::msg)?;
+    let inner = sp::Sandbox::init_ejs()
+        .map_err(anyhow::Error::msg)
+        .context("failed to initialize spider monkey engine")?;
     Ok(SpEngine { inner })
 }
 
@@ -38,12 +35,10 @@ impl Engine for SpEngine {
 
     fn sandbox(&self, args: Vec<String>) -> Result<Self::Sandbox> {
         let mut inner = sp::Sandbox::new_on_engine(self.inner.clone())
-            .map_err(anyhow::Error::msg)?
+            .map_err(anyhow::Error::msg).context("engine create")?
             .set_exec_args(args)
-            .map_err(anyhow::Error::msg)?;
-
-        inner.init().map_err(anyhow::Error::msg)?;
-
+            .map_err(anyhow::Error::msg).context("set exec args")?;
+        inner.init().map_err(anyhow::Error::msg).context("box init")?;
         Ok(SpSandbox { inner: Some(inner) })
     }
 
@@ -85,7 +80,7 @@ impl Sandbox for SpSandbox {
             .as_mut()
             .unwrap()
             .mount(src.as_ref(), des, into_mode(mode))
-            .map_err(anyhow::Error::msg)?)
+            .map_err(anyhow::Error::msg).context("mount")?)
     }
 
     fn work_dir(&mut self, dir: &str) -> Result<()> {
@@ -104,12 +99,14 @@ impl Sandbox for SpSandbox {
         let _ = self
             .inner
             .unwrap()
-            .run(code.wasm, code.js)
-            .map_err(anyhow::Error::msg)?;
+            .run(code.js, code.wasm)
+            .map_err(anyhow::Error::msg)
+            .context("failed to execute emscripten code")?;
         Ok(())
     }
 
     fn from_wasm_path(&self, wasm_path: &Path) -> Result<Self::Code> {
+        log::debug!("loading wasm: {}", wasm_path.display());
         let js_path = wasm_path.with_extension("js");
 
         let wasm = wasm_path.try_into()?;

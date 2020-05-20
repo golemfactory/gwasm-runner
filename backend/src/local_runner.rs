@@ -92,7 +92,6 @@ pub fn run_on_local(engine: impl Engine, wasm_path: &Path, args: &[String]) -> F
         split_args.push("split".to_owned());
         split_args.push("/task_dir/".to_owned());
         split_args.extend(args.iter().cloned());
-        eprintln!("work dir: {}", output_path.display());
         run_local_code(engine.clone(), wasm_path, &output_path, split_args)?;
     }
 
