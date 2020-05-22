@@ -78,7 +78,7 @@ for_spwasm! {
 for_wasmtime! {
     impl BrassEngine for gwr_backend::WtEngine {
         fn context_from_path(self, _wasm_path: &Path) -> anyhow::Result<RunnerContext<Self>> {
-            anyhow::bail!("brass backed supports only spwasm runtime")
+            anyhow::bail!("brass backend supports only spwasm runtime")
         }
     }
 }
