@@ -1,14 +1,9 @@
+use app_dirs::{app_dir, AppDataType, AppInfo};
+use std::path::Path;
 use {
-    app_dirs::{app_dir, AppDataType, AppInfo},
-    failure::Fallible,
     gwasm_api::prelude::{Net, Timeout},
     serde::{Deserialize, Serialize},
     std::{fs::File, path::PathBuf, str::FromStr},
-};
-
-pub const GOLEM_APP_INFO: AppInfo = AppInfo {
-    name: "golem",
-    author: "golem",
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -38,8 +33,8 @@ pub struct GolemConfig {
 }
 
 impl GolemConfig {
-    pub fn from(config_path: PathBuf) -> Fallible<GolemConfig> {
-        if config_path.exists() {
+    pub fn from(config_path: impl AsRef<Path>) -> anyhow::Result<GolemConfig> {
+        if config_path.as_ref().exists() {
             let user_config: GolemConfig = serde_json::from_reader(File::open(config_path)?)?;
             return Ok(user_config);
         }
@@ -73,6 +68,11 @@ fn default_bid() -> f64 {
 fn default_budget() -> f64 {
     1.0
 }
+
+const GOLEM_APP_INFO: AppInfo = AppInfo {
+    name: "golem",
+    author: "golem",
+};
 
 fn default_data_dir() -> PathBuf {
     app_dir(AppDataType::UserData, &GOLEM_APP_INFO, "default").unwrap()

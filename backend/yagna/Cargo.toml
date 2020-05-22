@@ -1,0 +1,27 @@
+[package]
+name = "gwr-backend-yagna"
+version = "0.1.0"
+authors = ["Golem Factory <contact@golem.network>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.31"
+dotenv = "0.15.0"
+log="0.4"
+
+actix-http = "1.0.0"
+gwr-backend={ version="0.1", path=".." }
+ya-client={ version = "0.3", git="https://github.com/golemfactory/ya-client.git" }
+ya-emscripten-meta={git="https://github.com/golemfactory/ya-runtime-emscripten.git"}
+structopt = "0.2"
+futures="0.3"
+actix="0.9"
+serde= { version = "1.0", features=["derive"] }
+awc="1.0.1"
+chrono="0.4.11"
+bigdecimal = "0.1.2"
+sha3 = "0.8.2"
+zip = "0.5.5"
+serde_json="1.0.53"
+tokio = { version = "0.2.10", features = ["time"] }
+uuid = { version = "0.7", features = ["serde", "v4"] }

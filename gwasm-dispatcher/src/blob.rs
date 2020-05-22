@@ -17,17 +17,19 @@ impl Blob {
     }
 
     pub fn open(&self) -> io::Result<impl Read + Seek> {
-        fs::OpenOptions::new().read(true).open(&self.0)
+        let path = em_canonicalize(&self.0)?;
+        fs::OpenOptions::new().read(true).open(&path)
     }
 }
 
 impl Output {
     pub fn open(&self) -> io::Result<impl Write + Seek> {
+        let path = em_canonicalize(&self.0)?;
         fs::OpenOptions::new()
             .create(true)
             .truncate(true)
             .write(true)
-            .open(&self.0)
+            .open(&path)
     }
 
     #[inline]

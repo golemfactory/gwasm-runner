@@ -1,0 +1,26 @@
+[package]
+name = "gwr-backend"
+version = "0.1.0"
+authors = ["Golem Factory <contact@golem.network>"]
+edition = "2018"
+
+[features]
+default=[]
+spwasm=['gwr-runtime-spwasm']
+wasmtime=['gwr-runtime-wasmtime']
+
+[dependencies]
+anyhow = "1.0.31"
+log="0.4"
+structopt = { version="0.2", features = ["wrap_help", "suggestions", "color"] }
+app_dirs = "1.2.1"
+uuid = { version = "0.7", features = ["serde", "v4"] }
+serde_json="1.0.40"
+humantime = "2.0.0"
+
+gwasm-dispatcher = { version="0.2", path = "../gwasm-dispatcher" }
+
+gwr-runtime-api = { version="0.1", path = "../runtime" }
+gwr-runtime-spwasm = { version="0.1", path = "../runtime/spwasm", optional = true }
+gwr-runtime-wasmtime = { version="0.1", path = "../runtime/wasmtime", optional = true }
+

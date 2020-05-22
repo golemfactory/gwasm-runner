@@ -1,0 +1,9 @@
+[package]
+name = "gwr-runtime-api"
+version = "0.1.0"
+authors = ["Golem Factory <contact@golem.network>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.31"
+
