@@ -74,7 +74,7 @@ Should you need to change the default configuration for the runner (e.g. whether
 
 To override the default values you will need to create your own, local configuration file. The path to this file depends on your operating system, here are examples for each platform:
 
-- Linux: `$HOME/.config/g-wasm-runner/brass/config.json` 
+- Linux: `$HOME/.config/g-wasm-runner/brass/config.json`
 - MacOS: `$HOME/Library/Application Support/g-wasm-runner/brass/config.json`
 - Windows: `C:\Users\<USER_NAME>\AppData\Roaming\Golem Factory\g-wasm-runner\brass\config.json`
 

@@ -80,7 +80,7 @@ impl PaymentManager {
         let api = self.payment_api.clone();
 
         let f = async move {
-            let events = api.get_debit_note_events(Some(&ts)).await?;
+            let events = api.get_debit_note_events(Some(&ts), None).await?;
             for event in events {
                 log::debug!("got debit note: {:?}", event);
                 ts = event.timestamp;
@@ -109,7 +109,7 @@ impl PaymentManager {
         let api = self.payment_api.clone();
 
         let f = async move {
-            let events = api.get_invoice_events(Some(&ts)).await?;
+            let events = api.get_invoice_events(Some(&ts), None).await?;
             let mut new_invoices = Vec::new();
             for event in events {
                 log::debug!("Got invoice: {:?}", event);
@@ -442,7 +442,7 @@ pub fn run(
         Some(token) => token,
         None => std::env::var("YAGNA_APPKEY")?,
     };
-    let client = ya_client::web::WebClient::with_token(&token)?;
+    let client = ya_client::web::WebClient::with_token(&token);
 
     let mut sys = System::new("wasm-runner");
     let mut w = WorkDir::new("lwg")?;

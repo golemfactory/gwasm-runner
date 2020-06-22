@@ -1,12 +1,12 @@
 name: Continuous integration
 
-on: 
+on:
   push:
     branches:
-      - master
+    - master
   pull_request:
     branches:
-      - master
+    - master
 
 jobs:
   build:
@@ -20,7 +20,7 @@ jobs:
         toolchain: stable
     - name: Install build deps
       run: |
-              sudo apt-get install -y autoconf2.13 clang
+        sudo apt-get install -y autoconf2.13 clang
     - name: Cargo fmt
       uses: actions-rs/cargo@v1
       with:
@@ -53,21 +53,21 @@ jobs:
     name: Publish Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - name: Build documentation
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: -p gwasm-dispatcher --no-deps --all-features
-      - name: Publish documentation
-        if: github.event_name == 'push' && (github.event.ref == 'refs/heads/master' || github.event.branch == 'cargo-doc') && github.repository == 'golemfactory/gwasm-runner'
-        run: |
-          cp scripts/runner-update.sh target/doc/
-          cd target/doc
-          git init
-          git add .
-          git -c user.name='ci' -c user.email='ci' commit -m 'Deploy API documentation'
-          git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
+    - uses: actions/checkout@master
+    - name: Build documentation
+      uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: -p gwasm-dispatcher --no-deps --all-features
+    - name: Publish documentation
+      if: github.event_name == 'push' && (github.event.ref == 'refs/heads/master' || github.event.branch == 'cargo-doc') && github.repository == 'golemfactory/gwasm-runner'
+      run: |
+        cp scripts/runner-update.sh target/doc/
+        cd target/doc
+        git init
+        git add .
+        git -c user.name='ci' -c user.email='ci' commit -m 'Deploy API documentation'
+        git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
 
 
 # vim: sts=2 sw=2
