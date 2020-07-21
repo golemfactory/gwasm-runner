@@ -117,7 +117,7 @@ gwr_backend::for_wasmtime! {
             let properties = serde_json::json!({
             "golem": {
                 "node.id.name": node_name,
-                "srv.comp.wasm.task_package": wasm_url,
+                "srv.comp.task_package": wasm_url,
                 "srv.comp.expiration": expiration.timestamp_millis(),
             },
         });
@@ -195,7 +195,7 @@ gwr_backend::for_spwasm! {
             let properties = serde_json::json!({
             "golem": {
                 "node.id.name": node_name,
-                "srv.comp.wasm.task_package": wasm_url,
+                "srv.comp.task_package": wasm_url,
                 "srv.comp.expiration": expiration.timestamp_millis(),
             },
         });
