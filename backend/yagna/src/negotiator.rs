@@ -158,10 +158,11 @@ impl Handler<ProcessEvent> for AgreementProducer {
                     if self.pending.is_empty() {
                         return MessageResult(());
                     }
-                    let new_agreement_id = proposal.proposal_id().unwrap().clone();
+                    let proposal_id = proposal.proposal_id().unwrap().clone();
                     let provider_id = proposal.issuer_id().unwrap().clone();
+                    log::debug!("create agreement from proposal_id: {}", proposal_id);
                     let new_agreement = AgreementProposal::new(
-                        new_agreement_id.clone(),
+                        proposal_id.clone(),
                         Utc::now() + chrono::Duration::hours(2),
                     );
                     let _me = ctx.address();
@@ -174,31 +175,36 @@ impl Handler<ProcessEvent> for AgreementProducer {
                     };
                     let _ = ctx.spawn(
                         async move {
-                            if let Err(_e) = async {
-                                let _ack = requestor_api.create_agreement(&new_agreement).await?;
+                            match async {
+                                let new_agreement_id =
+                                    requestor_api.create_agreement(&new_agreement).await?;
                                 log::debug!("confirm agreement = {}", new_agreement_id);
                                 requestor_api.confirm_agreement(&new_agreement_id).await?;
                                 log::debug!("wait for agreement = {}", new_agreement_id);
                                 requestor_api
                                     .wait_for_approval(&new_agreement_id, Some(7.879))
                                     .await?;
-                                Ok::<_, anyhow::Error>(())
+                                Ok::<_, anyhow::Error>(new_agreement_id)
                             }
-                            .await
-                            {
-                                log::error!(
-                                    "fail to negotiate agreement: {} from {}",
-                                    new_agreement_id,
-                                    provider_id
-                                );
-                                Err(slot)
-                            } else {
-                                log::info!(
-                                    "Agreement negotiated and confirmed with {}!",
-                                    provider_id
-                                );
-                                let _ = slot.send(new_agreement_id);
-                                Ok(())
+                            .await {
+                                Err(e) => {
+                                    log::error!(
+                                        "Failed to negotiate agreement for proposal: {} from: {}. Error: {}",
+                                        proposal_id,
+                                        provider_id,
+                                        e
+                                    );
+                                    Err(slot)
+                                },
+                                Ok(agreement_id) => {
+                                    log::info!(
+                                        "Agreement {} negotiated and confirmed with {}!",
+                                        agreement_id,
+                                        provider_id,
+                                    );
+                                    let _ = slot.send(agreement_id);
+                                    Ok(())
+                                }
                             }
                         }
                         .into_actor(self)
