@@ -248,7 +248,7 @@ async fn allocate_funds_for_task(
         payment_platform: None,
         total_amount: total_amount.clone(),
         timeout: None,
-        make_deposit: false
+        make_deposit: false,
     };
     let allocation = payment_api.create_allocation(&new_allocation).await?;
     log::info!("Allocated {} GNT.", &allocation.total_amount);
