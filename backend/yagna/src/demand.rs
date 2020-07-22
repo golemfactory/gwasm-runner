@@ -110,6 +110,7 @@ gwr_backend::for_wasmtime! {
             node_name: &str,
             wasm_url: &str,
             timeout: Duration,
+            subnet: Option<&String>
         ) -> anyhow::Result<Demand> {
             let expiration = Utc::now()
                 + chrono::Duration::from_std(timeout).unwrap_or(chrono::Duration::max_value());
@@ -119,6 +120,7 @@ gwr_backend::for_wasmtime! {
                 "node.id.name": node_name,
                 "srv.comp.task_package": wasm_url,
                 "srv.comp.expiration": expiration.timestamp_millis(),
+                "golem.node.debug.subnet": subnet
             },
         });
 
@@ -128,6 +130,7 @@ gwr_backend::for_wasmtime! {
                 (golem.inf.mem.gib>0.5)
                 (golem.inf.storage.gib>1)
                 (golem.com.pricing.model=linear)
+                (golem.runtime.name=wasmtime)
             )"#
                     .to_string(),
                 demand_id: Default::default(),
@@ -188,6 +191,7 @@ gwr_backend::for_spwasm! {
             node_name: &str,
             wasm_url: &str,
             timeout: Duration,
+            subnet: Option<&String>
         ) -> anyhow::Result<Demand> {
             let expiration = Utc::now()
                 + chrono::Duration::from_std(timeout).unwrap_or(chrono::Duration::max_value());
@@ -197,6 +201,7 @@ gwr_backend::for_spwasm! {
                 "node.id.name": node_name,
                 "srv.comp.task_package": wasm_url,
                 "srv.comp.expiration": expiration.timestamp_millis(),
+                "golem.node.debug.subnet": subnet
             },
         });
 
@@ -206,7 +211,7 @@ gwr_backend::for_spwasm! {
                 (golem.inf.mem.gib>0.5)
                 (golem.inf.storage.gib>1)
                 (golem.com.pricing.model=linear)
-                (golem.runtime.wasm.emscripten.version@v>0.0.0)
+                (golem.runtime.name=emscripten)
             )"#
                     .to_string(),
                 demand_id: Default::default(),

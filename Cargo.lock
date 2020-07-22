@@ -1927,6 +1927,7 @@ dependencies = [
  "sha3 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ya-client 0.3.0 (git+https://github.com/golemfactory/ya-client.git?rev=493461d5e64d0eea28e333c2888f4af68c1c38b0)",
  "ya-emscripten-meta 0.1.0 (git+https://github.com/golemfactory/ya-runtime-emscripten.git)",

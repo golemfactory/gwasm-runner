@@ -432,6 +432,7 @@ async fn try_process_task(
 pub fn run(
     hub_addr: Option<String>,
     token: Option<String>,
+    subnet : Option<String>,
     engine: impl YagnaEngine + 'static,
     wasm_path: &Path,
     timeout: Duration,
@@ -442,7 +443,9 @@ pub fn run(
         Some(token) => token,
         None => std::env::var("YAGNA_APPKEY")?,
     };
-    let client = ya_client::web::WebClient::builder().auth_token(&token).build();
+    let client = ya_client::web::WebClient::builder()
+        .auth_token(&token)
+        .build();
 
     let mut sys = System::new("wasm-runner");
     let mut w = WorkDir::new("lwg")?;
@@ -478,7 +481,7 @@ pub fn run(
         log::info!("Binary image uploaded: {}", image);
 
         let node_name = "test1";
-        let my_demand = engine.build_demand(node_name, &image, timeout)?;
+        let my_demand = engine.build_demand(node_name, &image, timeout, subnet.as_ref())?;
         let market_api: ya_client::market::MarketRequestorApi = client.interface()?;
 
         let storage = DistStorage::new(storage_server);
