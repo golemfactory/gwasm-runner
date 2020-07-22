@@ -49,7 +49,7 @@ install_runner() {
 
 	check_tool curl
 	check_tool awk
-	
+
   local BINNAME=gwasm-runner
 	local OS_NAME=$(os_name)
 	local TAG=$(get_latest_release golemfactory/gwasm-runner)
@@ -66,7 +66,7 @@ install_runner() {
 		local VER=$($BINNAME -V 2>/dev/null| awk "NR == 1 && \$1 == \"$BINNAME\" { print \$2 }")
 		message "current version:       ${VER:-unknown}"
 		message "new version:           ${TAG}"
-		
+
 		read -p "override (y/N): " Q
 		while [ "$Q" != "y" ] && [ "${Q:-n}" != "n" ]; do
 			echo wrong answer \"$Q\"
@@ -86,7 +86,7 @@ install_runner() {
 	trap "rm -rf $UPDATE_WORK_DIR" EXIT
 
 	echo -n "download ${DIST_NAME}.tar.gz  "
-	curl -sSL https://github.com/golemfactory/gwasm-runner/releases/download/${TAG}/${DIST_NAME}.tar.gz | tar xz -C "${UPDATE_WORK_DIR}" -f - 
+	curl -sSL https://github.com/golemfactory/gwasm-runner/releases/download/${TAG}/${DIST_NAME}.tar.gz | tar xz -C "${UPDATE_WORK_DIR}" -f -
 	echo " [ done ] "
 
 #	"$UPDATE_WORK_DIR/$DIST_NAME/golemcli" _int complete bash > $UPDATE_WORK_DIR/golemcli-complete.sh
@@ -104,6 +104,5 @@ install_runner() {
 #		sudo cp "$UPDATE_WORK_DIR/golemcli-complete.sh" /etc/bash_completion.d/golemcli
 #	fi
 }
-		
-install_runner </dev/tty
 
+install_runner </dev/tty

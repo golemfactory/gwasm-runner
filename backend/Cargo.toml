@@ -23,4 +23,3 @@ gwasm-dispatcher = { version="0.2", path = "../gwasm-dispatcher" }
 gwr-runtime-api = { version="0.1", path = "../runtime" }
 gwr-runtime-spwasm = { version="0.1", path = "../runtime/spwasm", optional = true }
 gwr-runtime-wasmtime = { version="0.1", path = "../runtime/wasmtime", optional = true }
-

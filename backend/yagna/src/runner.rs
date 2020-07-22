@@ -244,9 +244,11 @@ async fn allocate_funds_for_task(
     let now = Utc::now();
     let total_amount: BigDecimal = ((n_tasks * 8) as u64).into();
     let new_allocation = model::payment::NewAllocation {
+        address: None,
+        payment_platform: None,
         total_amount: total_amount.clone(),
         timeout: None,
-        make_deposit: false,
+        make_deposit: false
     };
     let allocation = payment_api.create_allocation(&new_allocation).await?;
     log::info!("Allocated {} GNT.", &allocation.total_amount);
@@ -432,7 +434,7 @@ async fn try_process_task(
 pub fn run(
     hub_addr: Option<String>,
     token: Option<String>,
-    subnet : Option<String>,
+    subnet: Option<String>,
     engine: impl YagnaEngine + 'static,
     wasm_path: &Path,
     timeout: Duration,
@@ -443,9 +445,7 @@ pub fn run(
         Some(token) => token,
         None => std::env::var("YAGNA_APPKEY")?,
     };
-    let client = ya_client::web::WebClient::builder()
-        .auth_token(&token)
-        .build();
+    let client = ya_client::web::WebClient::with_token(&token);
 
     let mut sys = System::new("wasm-runner");
     let mut w = WorkDir::new("lwg")?;
