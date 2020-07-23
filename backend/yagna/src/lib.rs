@@ -1,3 +1,4 @@
+#![allow(clippy::unit_arg)]
 use gwr_backend::rt::Engine;
 use gwr_backend::Flags;
 use std::path::Path;

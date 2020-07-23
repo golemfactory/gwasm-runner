@@ -113,7 +113,7 @@ gwr_backend::for_wasmtime! {
             subnet: Option<&String>
         ) -> anyhow::Result<Demand> {
             let expiration = Utc::now()
-                + chrono::Duration::from_std(timeout).unwrap_or(chrono::Duration::max_value());
+                + chrono::Duration::from_std(timeout).unwrap();
 
             let properties = serde_json::json!({
             "golem": {
@@ -194,7 +194,7 @@ gwr_backend::for_spwasm! {
             subnet: Option<&String>
         ) -> anyhow::Result<Demand> {
             let expiration = Utc::now()
-                + chrono::Duration::from_std(timeout).unwrap_or(chrono::Duration::max_value());
+                + chrono::Duration::from_std(timeout).unwrap();
 
             let properties = serde_json::json!({
             "golem": {

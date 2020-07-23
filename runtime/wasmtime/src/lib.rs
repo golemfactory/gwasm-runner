@@ -82,7 +82,7 @@ impl Sandbox for WtBox {
 
         let mut modules = module
             .imports()
-            .into_iter()
+            .iter()
             .map(|e| e.module())
             .collect::<HashSet<_>>();
 
@@ -113,7 +113,7 @@ impl Sandbox for WtBox {
 
         let externs = module
             .imports()
-            .into_iter()
+            .iter()
             .map(|item| {
                 deps.get(item.module())
                     .unwrap()

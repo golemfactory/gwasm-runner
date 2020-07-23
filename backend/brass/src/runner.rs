@@ -61,7 +61,7 @@ for_spwasm! {
 
     impl BrassEngine for gwr_backend::SpEngine {
         fn context_from_path(self, wasm_path: &Path) -> anyhow::Result<RunnerContext<Self>> {
-            let golem_config = GolemConfig::from(config_path(TASK_TYPE)?.join("config.json"))?;
+            let golem_config = GolemConfig::from_file(config_path(TASK_TYPE)?.join("config.json"))?;
             log::info!("Using: {:#?}", golem_config);
             let workdir = WorkDir::new(TASK_TYPE)?;
             log::info!("Working directory: {}", workdir.base_dir().display());
@@ -222,5 +222,5 @@ fn has_user_confirmed(wasm_path: &Path) -> bool {
         wasm_path
     );
 
-    return prompt_default("Would you like to proceed?", false);
+    prompt_default("Would you like to proceed?", false)
 }

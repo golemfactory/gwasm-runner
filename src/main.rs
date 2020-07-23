@@ -28,17 +28,17 @@ fn default_runtime(wasm_app: &Path) -> anyhow::Result<Runtime> {
     if wasm_app.with_extension("js").exists() {
         return RuntimeName::SpWasm.into_runtime();
     }
-    return RuntimeName::Wasmtime.into_runtime();
+    RuntimeName::Wasmtime.into_runtime()
 }
 
 #[cfg(all(not(feature = "spwasm"), feature = "wasmtime"))]
 fn default_runtime(_: &Path) -> anyhow::Result<Runtime> {
-    return RuntimeName::Wasmtime.into_runtime();
+    RuntimeName::Wasmtime.into_runtime()
 }
 
 #[cfg(all(feature = "spwasm", not(feature = "wasmtime")))]
 fn default_runtime(_: &Path) -> anyhow::Result<Runtime> {
-    return RuntimeName::SpWasm.into_runtime();
+    RuntimeName::SpWasm.into_runtime()
 }
 
 impl Opt {

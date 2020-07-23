@@ -1,3 +1,4 @@
+#![allow(clippy::unit_arg)]
 use gwr_backend::{rt, Flags};
 use std::path::Path;
 

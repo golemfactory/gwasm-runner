@@ -76,7 +76,7 @@ impl Actor for PaymentManager {
 
 impl PaymentManager {
     fn update_debit_notes(&mut self, ctx: &mut <PaymentManager as Actor>::Context) {
-        let mut ts = self.last_debit_note_event.clone();
+        let mut ts = self.last_debit_note_event;
         let api = self.payment_api.clone();
 
         let f = async move {
@@ -105,7 +105,7 @@ impl PaymentManager {
     }
 
     fn update_invoices(&mut self, ctx: &mut <PaymentManager as Actor>::Context) {
-        let mut ts = self.last_invoice_event.clone();
+        let mut ts = self.last_invoice_event;
         let api = self.payment_api.clone();
 
         let f = async move {
@@ -144,7 +144,7 @@ impl PaymentManager {
                                     total_amount_accepted: invoice.amount.clone(),
                                     allocation_id: this.allocation_id.clone(),
                                 };
-                                let _ = Arbiter::spawn(async move {
+                                Arbiter::spawn(async move {
                                     if let Err(e) =
                                         api.accept_invoice(&invoice_id, &acceptance).await
                                     {
@@ -160,7 +160,7 @@ impl PaymentManager {
                                     total_amount_accepted: 0.into(),
                                     message: Some("invoice received before results".to_string()),
                                 };
-                                let _ = Arbiter::spawn(async move {
+                                Arbiter::spawn(async move {
                                     if let Err(e) = api.reject_invoice(&invoice_id, &spec).await {
                                         log::error!("invoice: {} reject error: {}", invoice_id, e);
                                     }
@@ -259,7 +259,7 @@ async fn allocate_funds_for_task(
         total_amount,
         amount_paid: 0.into(),
         valid_agreements: Default::default(),
-        last_debit_note_event: now.clone(),
+        last_debit_note_event: now,
         last_invoice_event: now,
     };
     Ok(manager.start())
@@ -315,7 +315,7 @@ async fn process_task(
     }
     let output_slot = storage.download_slot().await?;
     commands.push(serde_json::json!({"transfer": {
-        "from": format!("container:/out/task.json"),
+        "from": "container:/out/task.json",
         "to": output_slot.url()
     }}));
 
@@ -348,11 +348,12 @@ async fn process_task(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn try_process_task(
     commands_cnt: usize,
     script: &ya_client::model::activity::ExeScriptRequest,
     output_slot: &DistSlot,
-    outputs: &Vec<(DistSlot, PathBuf)>,
+    outputs: &[(DistSlot, PathBuf)],
     client: WebClient,
     p: Addr<PaymentManager>,
     a: Addr<AgreementProducer>,
@@ -391,7 +392,7 @@ async fn try_process_task(
         {
             Ok(v) => v,
             Err(ya_client::Error::TimeoutError { .. }) => Vec::default(),
-            Err(e) => Err(e)?,
+            Err(e) => return Err(e.into()),
         };
 
         log::debug!("ExeScript batch results: {:#?}", results);
@@ -473,9 +474,9 @@ pub fn run(
 
     let storage_server: Arc<str> = "http://34.244.4.185:8000/".into();
     let payment_api: ya_client::payment::requestor::PaymentRequestorApi = client.interface()?;
-    let task_output_path = output_path.clone();
+    let task_output_path = output_path;
     let merge_engine = engine.clone();
-    let r = sys.block_on(async move {
+    sys.block_on(async move {
         // TODO: Catch error
         let image = push_image(storage_server.clone(), image).await.unwrap();
         log::info!("Binary image uploaded: {}", image);

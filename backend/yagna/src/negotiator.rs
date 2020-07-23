@@ -25,7 +25,7 @@ impl Actor for AgreementProducer {
         log::info!("Stopping");
         let subscription_id = self.subscription_id.clone();
         let api = self.api.clone();
-        let _ = Arbiter::spawn(async move {
+        Arbiter::spawn(async move {
             if let Err(e) = api.unsubscribe(&subscription_id).await {
                 log::error!("unsubscribe error: {}", e);
             }
@@ -135,7 +135,7 @@ impl Handler<ProcessEvent> for AgreementProducer {
                             return MessageResult(());
                         }
                     };
-                    let provider_id = proposal.issuer_id.clone().unwrap_or_default();
+                    let provider_id = proposal.issuer_id.unwrap_or_default();
                     let requestor_api = self.api.clone();
                     let subscription_id = self.subscription_id.clone();
                     let f = async move {

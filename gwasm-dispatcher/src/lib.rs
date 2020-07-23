@@ -1,3 +1,4 @@
+#![allow(clippy::needless_doctest_main)]
 //! gWASM Runner API for RUST.
 //!
 //! ## Examples
