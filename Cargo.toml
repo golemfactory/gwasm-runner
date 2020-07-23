@@ -1,6 +1,6 @@
 [package]
 name = "gwasm-runner"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Golem Factory <contact@golem.network>"]
 edition = "2018"
 description = "Command line tool for running wasi apps."
