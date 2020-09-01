@@ -472,7 +472,7 @@ pub fn run(
     let output_file = merge_path.join("tasks.json");
     let merge_path_ref = merge_path.clone();
 
-    let storage_server: Arc<str> = "http://34.244.4.185:8000/".into();
+    let storage_server: Arc<str> = "http://3.249.139.167:8000/".into();
     let payment_api: ya_client::payment::requestor::PaymentRequestorApi = client.interface()?;
     let task_output_path = output_path;
     let merge_engine = engine.clone();
