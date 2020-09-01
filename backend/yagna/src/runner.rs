@@ -244,8 +244,8 @@ async fn allocate_funds_for_task(
     let now = Utc::now();
     let total_amount: BigDecimal = ((n_tasks * 8) as u64).into();
     let new_allocation = model::payment::NewAllocation {
-        address: None,
-        payment_platform: None,
+        //address: None,
+        //payment_platform: None,
         total_amount: total_amount.clone(),
         timeout: None,
         make_deposit: false,

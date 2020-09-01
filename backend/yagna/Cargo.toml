@@ -11,7 +11,7 @@ log="0.4"
 
 actix-http = "1.0.0"
 gwr-backend={ version="0.1", path=".." }
-ya-client={ version = "0.3", git="https://github.com/golemfactory/ya-client.git", rev="4259165b86c13266f79098ac02e6590c39dc3012" }
+ya-client={ version = "0.3", git="https://github.com/golemfactory/ya-client.git", rev="b1653df7bc1f921af2c1267af2fe09b662424d37" }
 ya-emscripten-meta={git="https://github.com/golemfactory/ya-runtime-emscripten.git"}
 structopt = "0.2"
 futures="0.3"
