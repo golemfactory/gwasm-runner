@@ -33,7 +33,7 @@ pub struct GolemConfig {
 }
 
 impl GolemConfig {
-    pub fn from(config_path: impl AsRef<Path>) -> anyhow::Result<GolemConfig> {
+    pub fn from_file(config_path: impl AsRef<Path>) -> anyhow::Result<GolemConfig> {
         if config_path.as_ref().exists() {
             let user_config: GolemConfig = serde_json::from_reader(File::open(config_path)?)?;
             return Ok(user_config);

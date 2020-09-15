@@ -451,7 +451,7 @@ pub fn run<E: rt::Engine>(
         let output_file = merge_path.join("tasks.json");
         let merge_path_ref = merge_path.clone();
 
-        let image_fut = push_image(hub_url.clone(), image)
+        let image_fut = push_image(hub_url, image)
             .map_err(anyhow::Error::msg)
             .and_then(|(image_url, image_hash)| {
                 eprintln!("got image: {}", image_url);
@@ -549,7 +549,7 @@ pub fn run<E: rt::Engine>(
                                         .collect::<Vec<_>>(),
                                 );
 
-                                let task_dir_ref = task_dir.clone();
+                                let task_dir_ref = task_dir;
                                 let merge_path_ref = merge_path.clone();
 
                                 let output_meta = session.new_blob().and_then(move |b| {
@@ -613,14 +613,14 @@ pub fn run<E: rt::Engine>(
                         };
                         let deployment_desc = CreateSession {
                             env_type: "wasm".to_string(),
-                            image: image.clone(),
+                            image,
                             name: "".to_string(),
                             tags: vec![],
                             note: None,
                             options: (),
                         };
 
-                        let w = WorkManager::new(session.clone(), nodes, deployment_desc);
+                        let w = WorkManager::new(session, nodes, deployment_desc);
                         let we = w.clone();
                         futures::future::join_all(
                             r.into_iter()
