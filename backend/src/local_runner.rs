@@ -164,7 +164,7 @@ pub fn run_on_local(engine: impl Engine, wasm_path: &Path, args: &[String]) -> F
             "merge".to_owned(),
             "/task_dir/merge/tasks_input.json".to_owned(),
             "/task_dir/merge/tasks_output.json".to_owned(),
-            "--".to_owned()
+            "--".to_owned(),
         ];
 
         merge_args.extend(args.iter().cloned());

@@ -533,7 +533,7 @@ pub fn run(
             "merge".to_owned(),
             "/task_dir/split/tasks.json".to_owned(),
             "/task_dir/merge/tasks.json".to_owned(),
-            "--".to_owned()
+            "--".to_owned(),
         ];
         merge_args.extend(args.iter().cloned());
 
