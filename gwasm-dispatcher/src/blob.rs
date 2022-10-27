@@ -53,12 +53,12 @@ impl Output {
 }
 
 impl IntoTaskArg for Blob {
-    fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
+    fn into_arg(self, base: &Path) -> Result<TaskArg, Error> {
         let cpath = em_canonicalize(&self.0)?;
         let path = cpath.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))
-            .map(|v| TaskArg::Blob(v.replace("\\", "/")))
+            .map(|v| TaskArg::Blob(v.replace('\\', "/")))
     }
 }
 
@@ -97,7 +97,7 @@ impl FromTaskArg for Blob {
 }
 
 impl IntoTaskArg for Output {
-    fn into_arg(&self, base: &Path) -> Result<TaskArg, Error> {
+    fn into_arg(self, base: &Path) -> Result<TaskArg, Error> {
         let path = self.0.strip_prefix(base)?;
         path.to_str()
             .ok_or_else(|| Error::invalid_path(&self.0))

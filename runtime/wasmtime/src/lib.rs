@@ -140,7 +140,7 @@ impl Sandbox for WtBox {
         Ok(())
     }
 
-    fn from_wasm_path(&self, path: &Path) -> Result<Self::Code> {
+    fn for_wasm_path(&self, path: &Path) -> Result<Self::Code> {
         let data = std::fs::read(path)?;
         let module = w::Module::new(&self.store, data.as_ref())?;
         Ok(WtCode { module })

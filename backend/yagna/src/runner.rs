@@ -419,7 +419,7 @@ async fn try_process_task(
             activity_id
         );
         log::debug!("Downloading: {}", output.display());
-        slot.download(&output).await?;
+        slot.download(output).await?;
     }
     if let Err(e) = activity_api.control().destroy_activity(&activity_id).await {
         log::error!("fail to destroy activity: {}", e);
@@ -450,7 +450,7 @@ pub fn run(
 
     let mut sys = System::new("wasm-runner");
     let mut w = WorkDir::new("lwg")?;
-    let image = engine.build_image(&wasm_path)?;
+    let image = engine.build_image(wasm_path)?;
     log::info!("Locally splitting work into tasks");
     let output_path = w.split_output()?;
     {
@@ -529,12 +529,14 @@ pub fn run(
     })?;
 
     {
-        let mut merge_args = Vec::new();
-        merge_args.push("merge".to_owned());
-        merge_args.push("/task_dir/split/tasks.json".to_owned());
-        merge_args.push("/task_dir/merge/tasks.json".to_owned());
-        merge_args.push("--".to_owned());
+        let mut merge_args = vec![
+            "merge".to_owned(),
+            "/task_dir/split/tasks.json".to_owned(),
+            "/task_dir/merge/tasks.json".to_owned(),
+            "--".to_owned()
+        ];
         merge_args.extend(args.iter().cloned());
+
         run_local_code(
             merge_engine,
             wasm_path,

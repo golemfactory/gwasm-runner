@@ -77,7 +77,7 @@ pub(crate) fn split_into<S: Splitter>(
     splitter
         .split(&mut ctx)
         .into_iter()
-        .map(|item| IntoTaskDef::into_task_def(&item, base_path))
+        .map(|item| IntoTaskDef::into_task_def(item, base_path))
         .collect()
 }
 
