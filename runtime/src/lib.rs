@@ -30,5 +30,5 @@ pub trait Sandbox {
 
     fn run(self, code: Self::Code) -> Result<()>;
 
-    fn from_wasm_path(&self, path: &Path) -> Result<Self::Code>;
+    fn for_wasm_path(&self, path: &Path) -> Result<Self::Code>;
 }

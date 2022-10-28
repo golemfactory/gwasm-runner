@@ -92,7 +92,7 @@ fn execute_step<E: Executor<In, Out>, In: FromTaskDef, Out: IntoTaskDef>(
     let output_dir = output_desc_path.parent().ok_or(ApiError::NoParent)?;
 
     let input_params = load_from(&params_path)?;
-    let output_desc = exec_for(&executor, input_params, &input_dir, &output_dir)?;
+    let output_desc = exec_for(&executor, input_params, input_dir, output_dir)?;
 
     save_to(&output_desc_path, &output_desc)
 }
@@ -122,8 +122,8 @@ fn merge_step<M: Merger<In, Out>, In: FromTaskDef, Out: FromTaskDef>(
         merger,
         &original_args,
         in_out_pack,
-        &split_work_dir,
-        &exec_work_dir,
+        split_work_dir,
+        exec_work_dir,
     )
 }
 

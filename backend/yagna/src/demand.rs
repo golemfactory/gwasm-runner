@@ -88,14 +88,14 @@ gwr_backend::for_wasmtime! {
                 "manifest.json",
                 zip::write::FileOptions::default()
                     .compression_method(CompressionMethod::Stored)
-                    .last_modified_time(mtime.clone()),
+                    .last_modified_time(mtime),
             )?;
             serde_json::to_writer_pretty(&mut zw, &m)?;
             zw.start_file(
                 name_ws.as_ref(),
                 zip::write::FileOptions::default()
                     .compression_method(CompressionMethod::Bzip2)
-                    .last_modified_time(mtime.clone()),
+                    .last_modified_time(mtime),
             )?;
             std::io::copy(
                 &mut fs::OpenOptions::new().read(true).open(wasm_path)?,

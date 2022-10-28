@@ -3,7 +3,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[doc(hidden)]
 pub enum TaskArg {
@@ -55,11 +55,7 @@ impl TaskDef {
     pub fn rebase_output(mut self, from_base: &str, to_base: &str) -> Self {
         for arg in &mut self.0 {
             if let TaskArg::Output(ref mut output_path) = arg {
-                let blob_rel_path = if output_path.starts_with(from_base) {
-                    &output_path[from_base.len()..]
-                } else {
-                    &output_path[..]
-                };
+                let blob_rel_path = output_path.strip_prefix(from_base).unwrap_or(output_path);
                 let new_output = format!("{}{}", to_base, blob_rel_path);
                 *output_path = new_output
             }
@@ -71,7 +67,7 @@ impl TaskDef {
         let prefix = calc_rebase(from_base, to_path)
             .display()
             .to_string()
-            .replace("\\", "/");
+            .replace('\\', "/");
         for task_arg in &mut self.0 {
             task_arg.rebase_to(&prefix)?;
         }
@@ -80,15 +76,15 @@ impl TaskDef {
 }
 
 pub trait IntoTaskArg {
-    fn into_arg(&self, base: &Path) -> Result<TaskArg, Error>;
+    fn into_arg(self, base: &Path) -> Result<TaskArg, Error>;
 }
 
 impl<T> IntoTaskArg for T
 where
     for<'a> &'a T: Serialize,
 {
-    fn into_arg(&self, _base: &Path) -> Result<TaskArg, Error> {
-        Ok(TaskArg::Meta(serde_json::to_value(self)?))
+    fn into_arg(self, _base: &Path) -> Result<TaskArg, Error> {
+        Ok(TaskArg::Meta(serde_json::to_value(&self)?))
     }
 }
 
@@ -106,7 +102,7 @@ impl<T: DeserializeOwned + Sized> FromTaskArg for T {
 }
 
 pub trait IntoTaskDef {
-    fn into_task_def(&self, base: &Path) -> Result<TaskDef, Error>;
+    fn into_task_def(self, base: &Path) -> Result<TaskDef, Error>;
 }
 
 pub trait FromTaskDef: Sized {
@@ -116,7 +112,7 @@ pub trait FromTaskDef: Sized {
 macro_rules! gen_bind {
 ($($t : ident = $e : ident),+) => {
         impl<$($t : IntoTaskArg),+> IntoTaskDef for ($($t,)+) {
-            fn into_task_def(&self, base : &Path) -> Result<TaskDef, Error> {
+            fn into_task_def(self, base : &Path) -> Result<TaskDef, Error> {
                 let ($($e,)+) = self;
                 Ok(TaskDef(vec![$($e.into_arg(base)?),+]))
             }

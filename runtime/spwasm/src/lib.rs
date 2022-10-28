@@ -111,7 +111,7 @@ impl Sandbox for SpSandbox {
         Ok(())
     }
 
-    fn from_wasm_path(&self, wasm_path: &Path) -> Result<Self::Code> {
+    fn for_wasm_path(&self, wasm_path: &Path) -> Result<Self::Code> {
         log::debug!("loading wasm: {}", wasm_path.display());
         let js_path = wasm_path.with_extension("js");
 

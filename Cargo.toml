@@ -20,11 +20,8 @@ members = [
 
 [features]
 default=[
-    'spwasm',
     'wasmtime',
 
-    'with-brass',
-    'with-gu',
     'with-yagna'
 ]
 

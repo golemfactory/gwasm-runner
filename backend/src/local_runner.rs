@@ -39,10 +39,10 @@ pub fn run_local_code<E: Engine>(
     sandbox.mount(task_path, "/task_dir", Mode::Rw)?;
 
     if engine.supports_workdir() {
-        sandbox.work_dir(cur_dir.to_string_lossy().replace("\\", "/").as_ref())?
+        sandbox.work_dir(cur_dir.to_string_lossy().replace('\\', "/").as_ref())?
     }
 
-    let code = sandbox.from_wasm_path(wasm_path)?;
+    let code = sandbox.for_wasm_path(wasm_path)?;
 
     sandbox.run(code)?;
 
@@ -72,7 +72,7 @@ fn run_remote_code<E: Engine>(
         sandbox.work_dir("/in")?;
     }
 
-    let code = sandbox.from_wasm_path(wasm_path)?;
+    let code = sandbox.for_wasm_path(wasm_path)?;
     sandbox.run(code)?;
 
     log::info!(
@@ -160,11 +160,13 @@ pub fn run_on_local(engine: impl Engine, wasm_path: &Path, args: &[String]) -> F
     )?;
 
     {
-        let mut merge_args = Vec::new();
-        merge_args.push("merge".to_owned());
-        merge_args.push("/task_dir/merge/tasks_input.json".to_owned());
-        merge_args.push("/task_dir/merge/tasks_output.json".to_owned());
-        merge_args.push("--".to_owned());
+        let mut merge_args = vec![
+            "merge".to_owned(),
+            "/task_dir/merge/tasks_input.json".to_owned(),
+            "/task_dir/merge/tasks_output.json".to_owned(),
+            "--".to_owned(),
+        ];
+
         merge_args.extend(args.iter().cloned());
         run_local_code(engine, wasm_path, merge_path.parent().unwrap(), merge_args)?;
     }
